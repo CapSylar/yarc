@@ -1,55 +1,60 @@
 // stage_mem1 module
 
+`default_nettype none
+
 module stage_mem1
 import riscv_pkg::*;
 (
-    input clk_i,
-    input rstn_i,
+    input wire clk_i,
+    input wire rstn_i,
+
+    // <-> CS Register File
+    // write port
+    output logic [31:0] csr_wdata_o,
+    output logic [11:0] csr_waddr_o,
+    output logic csr_we_o,
 
     // Load Store Unit
     output logic lsu_req_o,
     // read port
     output logic [31:0] lsu_addr_o,
     output logic lsu_we_o,
-    input [31:0] lsu_rdata_i,
     // write port
     output logic [3:0] lsu_wsel_byte_o,
     output logic [31:0] lsu_wdata_o,
-    input lsu_req_stall_i,
+    input wire lsu_req_stall_i,
 
-    // from ID/EX combinational ins
-    input exc_t ex_trap_i,
-    input mem_oper_t id_ex_mem_oper_i,
+    input wire [31:0] lsu_rdata_i,
+    input wire lsu_req_done_i,
 
     // from EX/MEM1
-    input [31:0] alu_result_i,
-    input [31:0] alu_oper2_i,
-    input mem_oper_t mem_oper_i,
-    input [31:0] csr_wdata_i,
-    input [11:0] csr_waddr_i,
-    input instr_valid_i,
-    input is_csr_i,
-    input csr_we_i,
-    input exc_t trap_i,
+    input wire [31:0] alu_result_i,
+    input wire [31:0] alu_oper2_i,
+    input wire mem_oper_t mem_oper_i,
+    input wire [31:0] csr_wdata_i,
+    input wire [11:0] csr_waddr_i,
+    input wire instr_valid_i,
+    input wire is_csr_i,
+    input wire csr_we_i,
+    input wire exc_t trap_i,
 
     // for WB stage exclusively
-    input write_rd_i,
-    input [4:0] rd_addr_i,
+    input wire write_rd_i,
+    input wire [4:0] rd_addr_i,
 
     // MEM1/MEM2 pipeline registers
     output logic instr_valid_o,
     output logic is_csr_o,
-    output logic csr_we_o,
-    output logic [11:0] csr_waddr_o,
-    output logic [31:0] csr_wdata_o,
     output logic write_rd_o,
     output logic [4:0] rd_addr_o,
     output logic [31:0] alu_result_o,
+    output logic [31:0] lsu_rdata_o,
     output mem_oper_t mem_oper_o,
+
+    output logic lsu_stall_m_o,
     
-    input ex_mem1_flush_i,
-    input stall_i,
-    input flush_i,
+    input wire stall_i,
+    input wire flush_i,
 
     output exc_t trap_o
 );
@@ -95,22 +100,90 @@ begin
     endcase
 end
 
-mem_oper_t mem_oper_q;
-logic [31:0] lsu_addr_q;
+logic [31:0] rdata;
+// format the read data correctly
+always_comb
+begin : format_rdata
+    rdata = '0;
+
+    case(mem_oper_i)
+        MEM_LB:
+        begin
+            case (alu_result_i[1:0])
+                2'b00: rdata = 32'(signed'(lsu_rdata_i[(8*1)-1 -:8]));
+                2'b01: rdata = 32'(signed'(lsu_rdata_i[(8*2)-1 -:8]));
+                2'b10: rdata = 32'(signed'(lsu_rdata_i[(8*3)-1 -:8]));
+                2'b11: rdata = 32'(signed'(lsu_rdata_i[(8*4)-1 -:8]));
+            endcase
+        end
+        MEM_LBU:
+        begin
+            case (alu_result_i[1:0])
+                2'b00: rdata = 32'(lsu_rdata_i[(8*1)-1 -:8]);
+                2'b01: rdata = 32'(lsu_rdata_i[(8*2)-1 -:8]);
+                2'b10: rdata = 32'(lsu_rdata_i[(8*3)-1 -:8]);
+                2'b11: rdata = 32'(lsu_rdata_i[(8*4)-1 -:8]);
+            endcase 
+        end
+        MEM_LH:
+        begin
+            case (alu_result_i[1])
+                1'b0: rdata = 32'(signed'(lsu_rdata_i[(16*1)-1 -:16]));
+                1'b1: rdata = 32'(signed'(lsu_rdata_i[(16*2)-1 -:16]));
+            endcase
+        end
+
+        MEM_LHU:
+        begin
+            case (alu_result_i[1])
+                1'b0: rdata = 32'(lsu_rdata_i[(16*1)-1 -:16]);
+                1'b1: rdata = 32'(lsu_rdata_i[(16*2)-1 -:16]);
+            endcase
+        end
+        MEM_LW:
+        begin
+            rdata = lsu_rdata_i;
+        end
+        default:;
+    endcase
+end
 
 // memory request to be issued in the current must be known 1 cycle in advance
 // so we must determine if a memory instruction currently in EX will be in MEM in the next cycle
 
 // when not to start a memory request
-wire cannot_issue_req = (ex_trap_i != NO_TRAP) || (trap_i != NO_TRAP) || ex_mem1_flush_i || flush_i || stall_i;
+wire cannot_issue_req = (trap_i != NO_TRAP) | flush_i ; // | stall_i;
+
+typedef enum {IDLE, WAITING_FOR_DONE} state_t;
+state_t state, next;
+
+flopr_type #(state_t, IDLE) state_flop (clk_i, rstn_i, next, state);
 
 always_comb
 begin
-    lsu_req_o = '0;
+    next = state;
+    lsu_req_o = 1'b0;
 
-    if (id_ex_mem_oper_i != MEM_NOP && !cannot_issue_req)
-        lsu_req_o = 1'b1;
+    unique case (state)
+        IDLE: begin
+            if (mem_oper_i != MEM_NOP & !cannot_issue_req) begin
+                lsu_req_o = 1'b1;
+                next = WAITING_FOR_DONE;
+            end
+        end
+
+        WAITING_FOR_DONE: begin
+            if (lsu_req_done_i) begin
+                next = IDLE;
+            end
+        end
+    endcase
 end
+
+/*
+ * Here I am using the fact that for now lsu req never responds in the same cycle
+ */
+assign lsu_stall_m_o = lsu_req_o | (state != IDLE) & ~lsu_req_done_i;
 
 // lsu outputs
 assign lsu_addr_o = alu_result_i;
@@ -118,31 +191,31 @@ assign lsu_wdata_o = wdata;
 assign lsu_wsel_byte_o = wsel_byte;
 assign lsu_we_o = is_write;
 
+wire no_csr_commit = stall_i | trap_i != NO_TRAP;
+
+// csrs
+assign csr_we_o = csr_we_i & ~no_csr_commit;
+assign csr_wdata_o = csr_wdata_i;
+assign csr_waddr_o = csr_waddr_i;
+
 // pipeline registers
-always_ff @(posedge clk_i)
-begin
-    if (!rstn_i || flush_i)
-    begin
-        write_rd_o <= '0;
-        is_csr_o <= '0;
-        csr_we_o <= '0;
-        mem_oper_o <= MEM_NOP;
-        trap_o <= NO_TRAP;
-        instr_valid_o <= '0;
-    end
-    else if (!stall_i)
-    begin
-        write_rd_o <= write_rd_i;
-        rd_addr_o <= rd_addr_i;
-        alu_result_o <= alu_result_i;
-        mem_oper_o <= mem_oper_i;
-        is_csr_o <= is_csr_i;
-        csr_we_o <= csr_we_i;
-        csr_waddr_o <= csr_waddr_i;
-        csr_wdata_o <= csr_wdata_i;
-        trap_o <= trap_i;
-        instr_valid_o <= instr_valid_i;
-    end
-end
+flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flush_i, !stall_i, write_rd_i, write_rd_o);
+flopenrc #(1) is_csr_reg        (clk_i, rstn_i, flush_i, !stall_i, is_csr_i, is_csr_o);
+flopenrc #(32) alu_result_reg   (clk_i, rstn_i, flush_i, !stall_i, alu_result_i, alu_result_o);
+flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flush_i, !stall_i, rdata, lsu_rdata_o);
+flopenrc_type #(mem_oper_t, MEM_NOP) mem_oper_reg     (clk_i, rstn_i, flush_i, !stall_i, mem_oper_i, mem_oper_o);
+
+flopenrc #(5) rd_addr_reg       (clk_i, rstn_i, flush_i, !stall_i, rd_addr_i, rd_addr_o);
+flopenrc #(1) instr_valid_reg   (clk_i, rstn_i, flush_i, !stall_i, instr_valid_i, instr_valid_o);
+
+// flopenrc #(1) csr_we_reg        (clk_i, rstn_i, flush_i, !stall_i, csr_we_i, csr_we_o);
+// flopenrc #(12) csr_waddr_reg    (clk_i, rstn_i, flush_i, !stall_i, csr_waddr_i, csr_waddr_o);
+// flopenrc #(32) csr_wdata_reg    (clk_i, rstn_i, flush_i, !stall_i, csr_wdata_i, csr_wdata_o);
+
+// flopenrc_type #(exc_t, NO_TRAP) trap_reg             (clk_i, rstn_i, flush_i, !stall_i, trap_i, trap_o);
+
+assign trap_o = trap_i;
 
 endmodule: stage_mem1
+
+`default_nettype wire

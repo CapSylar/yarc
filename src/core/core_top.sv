@@ -74,14 +74,14 @@ mem_oper_t ex_mem1_mem_oper;
 logic [31:0] ex_mem1_csr_wdata;
 logic [11:0] ex_mem1_csr_waddr;
 logic ex_mem1_csr_we;
-logic ex_mem1_is_csr;
+logic ex_mem_is_csr;
 logic ex_mem1_write_rd;
 logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
 logic ex_new_pc_en;
-exc_t ex_mem1_trap;
+exc_t ex_mem_trap;
 logic [31:0] ex_mem1_pc;
-logic ex_mem1_instr_valid;
+logic ex_mem_instr_valid;
 
 // Driven by the Mem1 stage
 logic lsu_req;
@@ -91,30 +91,23 @@ logic lsu_req_done;
 logic [31:0] lsu_rdata;
 logic [3:0] lsu_wsel_byte;
 logic [31:0] lsu_wdata;
-logic mem1_mem2_write_rd;
-logic [4:0] mem1_mem2_rd_addr;
-mem_oper_t mem1_mem2_mem_oper;
-logic [31:0] mem1_mem2_alu_result;
-logic [31:0] mem_wb_dmem_rdata;
-exc_t mem1_mem2_trap;
-logic mem1_mem2_is_csr;
-logic mem1_mem2_instr_valid;
-logic mem1_mem2_csr_we;
-logic [31:0] mem1_mem2_csr_wdata;
-logic [11:0] mem1_mem2_csr_waddr;
+exc_t mem_wb_trap;
+// logic [31:0] mem1_mem2_csr_wdata;
+// logic [31:0] mem1_mem2_lsu_rdata;
+// logic [11:0] mem1_mem2_csr_waddr;
 
 // Driven by the Mem2 stage
-logic mem2_wb_write_rd;
-logic mem2_wb_instr_valid;
-logic [4:0] mem2_wb_rd_addr;
-logic [31:0] mem2_wb_alu_result;
-logic [31:0] mem2_wb_lsu_rdata;
-logic mem2_stall_needed;
-mem_oper_t mem2_wb_mem_oper;
+logic mem_wb_write_rd;
+logic mem_wb_instr_valid;
+logic [4:0] mem_wb_rd_addr;
+logic [31:0] mem_wb_alu_result;
+logic [31:0] mem_wb_lsu_rdata;
+logic mem_stall_needed;
+mem_oper_t mem_wb_mem_oper;
 logic [31:0] csr_wdata;
 logic [11:0] csr_waddr;
 logic csr_we;
-exc_t mem2_trap;
+exc_t mem_trap;
 
 // Driven by the WB Data Interface
 logic lsu_req_stall;
@@ -125,25 +118,18 @@ logic [4:0] regf_waddr;
 logic [31:0] regf_wdata;
 
 // Driven by the Core Controller
-logic forward_ex_mem1_rs1;
-logic forward_ex_mem1_rs2;
-logic forward_mem1_mem2_rs1;
-logic forward_mem1_mem2_rs2;
-logic forward_mem2_wb_rs1;
-logic forward_mem2_wb_rs2;
-logic [31:0] forward_ex_mem1_data;
-logic [31:0] forward_mem1_mem2_data;
-logic [31:0] forward_mem2_wb_data;
+logic [1:0] forward_rs1;
+logic [1:0] forward_rs2;
+logic [31:0] forward_ex_mem_data;
+logic [31:0] forward_mem_wb_data;
 logic if_stall;
 logic if_flush;
 logic id_ex_flush;
 logic id_ex_stall;
-logic ex_mem1_flush;
-logic ex_mem1_stall;
-logic mem1_mem2_flush;
-logic mem1_mem2_stall;
-logic mem2_wb_stall;
-logic mem2_wb_flush;
+logic ex_mem_flush;
+logic ex_mem_stall;
+logic mem_wb_stall;
+logic mem_wb_flush;
 logic new_pc_en;
 pc_sel_t pc_sel;
 logic is_mret;
@@ -231,7 +217,7 @@ cs_registers cs_registers_i
     .irq_external_i(irq_external_i),
 
     // used by the performance counters
-    .instr_ret_i(mem2_wb_instr_valid && !mem2_wb_stall)
+    .instr_ret_i(mem_wb_instr_valid && !mem_wb_stall)
 );
 
 // Decode Stage
@@ -327,8 +313,8 @@ execute execute_i
     // EX/MEM pipeline registers
     
     // feedback into the pipeline register
-    .stall_i(ex_mem1_stall), // keep the same content in the registers
-    .flush_i(ex_mem1_flush), // zero the register contents
+    .stall_i(ex_mem_stall), // keep the same content in the registers
+    .flush_i(ex_mem_flush), // zero the register contents
 
     .alu_result_o(ex_mem1_alu_result),
     .alu_oper2_o(ex_mem1_alu_oper2),
@@ -336,10 +322,10 @@ execute execute_i
     .csr_wdata_o(ex_mem1_csr_wdata),
     .csr_waddr_o(ex_mem1_csr_waddr),
     .csr_we_o(ex_mem1_csr_we),
-    .is_csr_o(ex_mem1_is_csr),
-    .trap_o(ex_mem1_trap),
+    .is_csr_o(ex_mem_is_csr),
+    .trap_o(ex_mem_trap),
     .pc_o(ex_mem1_pc),
-    .instr_valid_o(ex_mem1_instr_valid),
+    .instr_valid_o(ex_mem_instr_valid),
 
     // for WB stage exclusively
     .write_rd_o(ex_mem1_write_rd),
@@ -350,17 +336,11 @@ execute execute_i
     .branch_target_o(branch_target),
 
     // from forwarding logic
-    .forward_ex_mem1_rs1_i(forward_ex_mem1_rs1),
-    .forward_ex_mem1_rs2_i(forward_ex_mem1_rs2),
-    .forward_ex_mem1_data_i(forward_ex_mem1_data),
+    .forward_rs1_i(forward_rs1),
+    .forward_rs2_i(forward_rs2),
 
-    .forward_mem1_mem2_rs1_i(forward_mem1_mem2_rs1),
-    .forward_mem1_mem2_rs2_i(forward_mem1_mem2_rs2),
-    .forward_mem1_mem2_data_i(forward_mem1_mem2_data),
-
-    .forward_mem2_wb_rs1_i(forward_mem2_wb_rs1),
-    .forward_mem2_wb_rs2_i(forward_mem2_wb_rs2),
-    .forward_mem2_wb_data_i(forward_mem2_wb_data)
+    .forward_ex_mem_data_i(forward_ex_mem_data),
+    .forward_mem_wb_data_i(forward_mem_wb_data)
 );
 
 // MEM1 Stage (Setting up Memory request
@@ -369,20 +349,21 @@ stage_mem1 stage_mem1_i
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
+    .csr_wdata_o(csr_wdata),
+    .csr_waddr_o(csr_waddr),
+    .csr_we_o(csr_we),
+
     // MEM1 <-> LSU
     // read port
     .lsu_req_o(lsu_req),
     .lsu_addr_o(lsu_addr),
     .lsu_we_o(lsu_we),
-    .lsu_rdata_i(lsu_rdata),
     // write port
     .lsu_wsel_byte_o(lsu_wsel_byte),
     .lsu_wdata_o(lsu_wdata),
     .lsu_req_stall_i(lsu_req_stall),
-
-    // from ID/EX combinational ins
-    .ex_trap_i(id_ex_trap),
-    .id_ex_mem_oper_i(id_ex_mem_oper),
+    .lsu_req_done_i(lsu_req_done),
+    .lsu_rdata_i(lsu_rdata),
 
     // from EX/MEM
     .alu_result_i(ex_mem1_alu_result),
@@ -391,75 +372,30 @@ stage_mem1 stage_mem1_i
 
     .csr_wdata_i(ex_mem1_csr_wdata),
     .csr_waddr_i(ex_mem1_csr_waddr),
-    .instr_valid_i(ex_mem1_instr_valid),
-    .is_csr_i(ex_mem1_is_csr),
+    .instr_valid_i(ex_mem_instr_valid),
+    .is_csr_i(ex_mem_is_csr),
     .csr_we_i(ex_mem1_csr_we),
 
-    .trap_i(ex_mem1_trap),
+    .trap_i(ex_mem_trap),
 
     // for WB stage exclusively
     .write_rd_i(ex_mem1_write_rd),
     .rd_addr_i(ex_mem1_rd_addr),
 
     // MEM1/MEM2 pipeline registers
-    .instr_valid_o(mem1_mem2_instr_valid),
-    .is_csr_o(mem1_mem2_is_csr),
-    .csr_we_o(mem1_mem2_csr_we),
-    .csr_wdata_o(mem1_mem2_csr_wdata),
-    .csr_waddr_o(mem1_mem2_csr_waddr),
-    .write_rd_o(mem1_mem2_write_rd),
-    .rd_addr_o(mem1_mem2_rd_addr),
-    .alu_result_o(mem1_mem2_alu_result),
-    .mem_oper_o(mem1_mem2_mem_oper),
-    .trap_o(mem1_mem2_trap),
+    .instr_valid_o(mem_wb_instr_valid),
+    .is_csr_o(mem_wb_is_csr),
+    .write_rd_o(mem_wb_write_rd),
+    .rd_addr_o(mem_wb_rd_addr),
+    .alu_result_o(mem_wb_alu_result),
+    .mem_oper_o(mem_wb_mem_oper),
+    .trap_o(mem_wb_trap),
+    .lsu_rdata_o(mem_wb_lsu_rdata),
 
-    .ex_mem1_flush_i(ex_mem1_flush),
-    .stall_i(mem1_mem2_stall),
-    .flush_i(mem1_mem2_flush)
-);
+    .lsu_stall_m_o(mem_stall_needed),
 
-// MEM2 Stage (Waiting for Memory Request to Finish)
-stage_mem2 stage_mem2_i
-(
-    .clk_i(clk_i),
-    .rstn_i(rstn_i),
-
-    // <-> CS Register File
-    // write port
-    .csr_wdata_o(csr_wdata),
-    .csr_waddr_o(csr_waddr),
-    .csr_we_o(csr_we),
-    
-    // from MEM1 stage
-    .instr_valid_i(mem1_mem2_instr_valid),
-    .alu_result_i(mem1_mem2_alu_result),
-    .mem_oper_i(mem1_mem2_mem_oper),
-    .csr_wdata_i(mem1_mem2_csr_wdata),
-    .csr_waddr_i(mem1_mem2_csr_waddr),
-    .csr_we_i(mem1_mem2_csr_we),
-    .trap_i(mem1_mem2_trap),
-
-    // for WB stage exclusively
-    .write_rd_i(mem1_mem2_write_rd),
-    .rd_addr_i(mem1_mem2_rd_addr),
-
-    // from LSU unit
-    .lsu_req_done_i(lsu_req_done),
-    .lsu_rdata_i(lsu_rdata),
-
-    // pipeline registers
-    .instr_valid_o(mem2_wb_instr_valid),
-    .write_rd_o(mem2_wb_write_rd),
-    .rd_addr_o(mem2_wb_rd_addr),
-    .alu_result_o(mem2_wb_alu_result),
-    .lsu_rdata_o(mem2_wb_lsu_rdata),
-    .mem_oper_o(mem2_wb_mem_oper),
-
-    .stall_o(mem2_stall_needed),
-    .trap_o(mem2_trap),
-
-    .stall_i(mem2_wb_stall),
-    .flush_i(mem2_wb_flush)
+    .stall_i(mem_wb_stall),
+    .flush_i(mem_wb_flush)
 );
 
 // Load Store Unit
@@ -490,11 +426,11 @@ write_back write_back_i
     .rstn_i(rstn_i),
 
     // from MEM/WB
-    .mem_oper_i(mem2_wb_mem_oper),
-    .write_rd_i(mem2_wb_write_rd),
-    .rd_addr_i(mem2_wb_rd_addr),
-    .alu_result_i(mem2_wb_alu_result),
-    .lsu_rdata_i(mem2_wb_lsu_rdata),
+    .mem_oper_i(mem_wb_mem_oper),
+    .write_rd_i(mem_wb_write_rd),
+    .rd_addr_i(mem_wb_rd_addr),
+    .alu_result_i(mem_wb_alu_result),
+    .lsu_rdata_i(mem_wb_lsu_rdata),
 
     // WB -> Register file
     .regf_write_o(regf_write),
@@ -512,62 +448,46 @@ controller controller_i
     .if_pc_i(if_pc),
 
     // from ID stage
-    .id_rs1_addr_i(rs1_addr),
-    .id_rs2_addr_i(rs2_addr),
+    .rs1D_i(rs1_addr),
+    .rs2D_i(rs2_addr),
 
     // from ID/EX pipeline
-    .id_ex_rs1_addr_i(id_ex_rs1_addr),
-    .id_ex_rs2_addr_i(id_ex_rs2_addr),
-    .id_ex_rd_addr_i(id_ex_rd_addr),
+    .rs1E_i(id_ex_rs1_addr),
+    .rs2E_i(id_ex_rs2_addr),
+    .rdE_i(id_ex_rd_addr),
     .id_ex_write_rd_i(id_ex_write_rd),
     .id_ex_mem_oper_i(id_ex_mem_oper),
 
     // from EX stage
     .ex_new_pc_en_i(ex_new_pc_en),
 
-    // from EX/MEM1
-    .ex_mem1_pc_i(ex_mem1_pc),
-    .ex_mem1_rd_addr_i(ex_mem1_rd_addr),
-    .ex_mem1_write_rd_i(ex_mem1_write_rd),
-    .ex_mem1_mem_oper_i(ex_mem1_mem_oper),
-    .ex_mem1_alu_result_i(ex_mem1_alu_result),
+    // from EX/MEM
+    .ex_mem_pc_i(ex_mem1_pc),
+    .rdM_i(ex_mem1_rd_addr),
+    .ex_mem_write_rd_i(ex_mem1_write_rd),
+    .ex_mem_mem_oper_i(ex_mem1_mem_oper),
+    .ex_mem_alu_result_i(ex_mem1_alu_result),
 
-    // from MEM1/MEM2
-    .mem1_mem2_rd_addr_i(mem1_mem2_rd_addr),
-    .mem1_mem2_write_rd_i(mem1_mem2_write_rd),
-    .mem1_mem2_mem_oper_i(mem1_mem2_mem_oper),
-    .mem1_mem2_alu_result_i(mem1_mem2_alu_result),
+    // from MEM/WB
+    .rdW_i(mem_wb_rd_addr),
+    .mem_wb_write_rd_i(mem_wb_write_rd),
+    .mem_wb_mem_oper_i(mem_wb_mem_oper),
+    .mem_wb_alu_result_i(mem_wb_alu_result),
+    .mem_wb_lsu_rdata_i(mem_wb_lsu_rdata),
+    .mem_stall_needed_i(mem_stall_needed),
+    .mem_trap_i(mem_wb_trap),
 
-    // from MEM2/WB
-    .mem2_wb_rd_addr_i(mem2_wb_rd_addr),
-    .mem2_wb_write_rd_i(mem2_wb_write_rd),
-    .mem2_wb_mem_oper_i(mem2_wb_mem_oper),
-    .mem2_wb_alu_result_i(mem2_wb_alu_result),
-    .mem2_wb_lsu_rdata_i(mem2_wb_lsu_rdata),
-    .mem2_stall_needed_i(mem2_stall_needed),
-    .mem_trap_i(mem2_trap),
+    // forwarding control signals
+    .forward_rs1_o(forward_rs1),
+    .forward_rs2_o(forward_rs2),
 
-    // from LSU
-    .lsu_req_stall_i(lsu_req_stall),
-
-    // forward from EX/MEM1 stage
-    .forward_ex_mem1_rs1_o(forward_ex_mem1_rs1),
-    .forward_ex_mem1_rs2_o(forward_ex_mem1_rs2),
-    .forward_ex_mem1_data_o(forward_ex_mem1_data),
-    // forward from MEM1/MEM2 stage
-    .forward_mem1_mem2_rs1_o(forward_mem1_mem2_rs1),
-    .forward_mem1_mem2_rs2_o(forward_mem1_mem2_rs2),
-    .forward_mem1_mem2_data_o(forward_mem1_mem2_data),
-    // froward from MEM2/WB stage
-    .forward_mem2_wb_rs1_o(forward_mem2_wb_rs1),
-    .forward_mem2_wb_rs2_o(forward_mem2_wb_rs2),
-    .forward_mem2_wb_data_o(forward_mem2_wb_data),
+    .forward_ex_mem_data_o(forward_ex_mem_data),
+    .forward_mem_wb_data_o(forward_mem_wb_data),
 
     .if_id_instr_valid_i(if_instr_valid),
     .id_ex_instr_valid_i(id_ex_instr_valid),
-    .ex_mem1_instr_valid_i(ex_mem1_instr_valid),
-    .mem1_mem2_instr_valid_i(mem1_mem2_instr_valid),
-    .mem2_wb_instr_valid_i(mem2_wb_instr_valid),
+    .ex_mem_instr_valid_i(ex_mem_instr_valid),
+    .mem_wb_instr_valid_i(mem_wb_instr_valid),
 
     // to cs registers
     .csr_mret_o(is_mret),
@@ -576,10 +496,8 @@ controller controller_i
     .exc_pc_o(exc_pc),
 
     // to handle CSR read/write side effects
-    .id_is_csr_i(id_is_csr),
     .ex_is_csr_i(id_ex_is_csr),
-    .mem1_is_csr_i(ex_mem1_is_csr),
-    .mem2_is_csr_i(mem1_mem2_is_csr),
+    .mem_is_csr_i(ex_mem_is_csr),
 
     // for interrupt handling
     .current_plvl_i(current_plvl),
@@ -599,16 +517,12 @@ controller controller_i
     .if_flush_o(if_flush),
 
     // flush/stall to EX/MEM1
-    .ex_mem1_stall_o(ex_mem1_stall),
-    .ex_mem1_flush_o(ex_mem1_flush),
-
-    // flush/stall to MEM1/MEM2
-    .mem1_mem2_stall_o(mem1_mem2_stall),
-    .mem1_mem2_flush_o(mem1_mem2_flush),
+    .ex_mem_stall_o(ex_mem_stall),
+    .ex_mem_flush_o(ex_mem_flush),
 
     // flush/stall to MEM2/WB
-    .mem2_wb_stall_o(mem2_wb_stall),
-    .mem2_wb_flush_o(mem2_wb_flush)
+    .mem_wb_stall_o(mem_wb_stall),
+    .mem_wb_flush_o(mem_wb_flush)
 );
 
 endmodule : core_top

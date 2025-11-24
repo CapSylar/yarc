@@ -9,6 +9,13 @@ ${PRJ_DIR}/core/includes/csr_pkg.sv
 ${PRJ_DIR}/ddr3_mem_controller/ddr3_parameters_pkg.sv
 ${PRJ_DIR}/platform/includes/platform_pkg.sv
 
+// generics
+${PRJ_DIR}/generic/flop/flopenrc.sv
+${PRJ_DIR}/generic/flop/flopenrc_type.sv
+${PRJ_DIR}/generic/flop/flopr.sv
+${PRJ_DIR}/generic/flop/flopr_type.sv
+${PRJ_DIR}/generic/mux.sv
+
 // peripherals
 ${PRJ_DIR}/peripherals/wbuart32/rtl/ufifo.v
 ${PRJ_DIR}/peripherals/wbuart32/rtl/rxuart.v
@@ -58,7 +65,6 @@ ${PRJ_DIR}/core/perf_counter.sv
 ${PRJ_DIR}/core/cs_registers.sv
 ${PRJ_DIR}/core/csr.sv
 ${PRJ_DIR}/core/stage_mem1.sv
-${PRJ_DIR}/core/stage_mem2.sv
 ${PRJ_DIR}/core/lsu.sv
 
 // platform
