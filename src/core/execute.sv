@@ -11,16 +11,13 @@ import riscv_pkg::*;
     input [31:0] rs1_data_i,
     input [31:0] rs2_data_i,
     input [31:0] imm_i,
-    input [31:0] csr_rdata_i,
     input alu_oper1_src_t alu_oper1_src_i,
     input alu_oper2_src_t alu_oper2_src_i,
     input alu_oper_t alu_oper_i,
     input bnj_oper_t bnj_oper_i,
-    input is_csr_i,
     input instr_valid_i,
     input mem_oper_t mem_oper_i,
-    input [11:0] csr_waddr_i,
-    input csr_we_i,
+    // input [11:0] csr_waddr_i,
     input exc_t trap_i,
     
     // forward to the WB stage
@@ -28,6 +25,7 @@ import riscv_pkg::*;
     input [4:0] rd_addr_i,
 
     // EX/MEM pipeline registers
+    output logic [31:0] rs1ValueM_o,
 
     // feedback into the pipeline registers
     input stall_i,
@@ -36,10 +34,8 @@ import riscv_pkg::*;
     output logic [31:0] alu_result_o, // always contains a mem address or the rd value
     output logic [31:0] alu_oper2_o,
     output mem_oper_t mem_oper_o,
-    output logic [31:0] csr_wdata_o,
-    output logic [11:0] csr_waddr_o,
-    output logic csr_we_o,
-    output logic is_csr_o,
+    // output logic [31:0] csr_wdata_o,
+    // output logic [11:0] csr_waddr_o,
     output exc_t trap_o,
     output logic [31:0] pc_o,
     output logic instr_valid_o,
@@ -59,10 +55,10 @@ import riscv_pkg::*;
     input [31:0] forward_mem_wb_data_i
 );
 
-logic [31:0] rs1_data, rs2_data; // contain the most up to date values of the registers needed
+logic [31:0] rs1ValueE, rs2ValueE; // contain the most up to date values of the registers needed
 
-mux3 #(32) mux_rs1_data_i (rs1_data_i, forward_mem_wb_data_i, forward_ex_mem_data_i, forward_rs1_i, rs1_data);
-mux3 #(32) mux_rs2_data_i (rs2_data_i, forward_mem_wb_data_i, forward_ex_mem_data_i, forward_rs2_i, rs2_data);
+mux3 #(32) mux_rs1_data_i (rs1_data_i, forward_mem_wb_data_i, forward_ex_mem_data_i, forward_rs1_i, rs1ValueE);
+mux3 #(32) mux_rs2_data_i (rs2_data_i, forward_mem_wb_data_i, forward_ex_mem_data_i, forward_rs2_i, rs2ValueE);
 
 logic [31:0] operand1, operand2; // arithmetic operations are done on these
 
@@ -73,7 +69,7 @@ begin
 
     unique case (alu_oper1_src_i)
         OPER1_RS1:
-            operand1 = rs1_data;
+            operand1 = rs1ValueE;
         OPER1_PC:
             operand1 = pc_i;
         OPER1_ZERO:
@@ -91,13 +87,13 @@ begin
 
     unique case (alu_oper2_src_i)
         OPER2_RS2:
-            operand2 = rs2_data;
+            operand2 = rs2ValueE;
         OPER2_IMM:
             operand2 = imm_i;
         OPER2_PC_INC:
             operand2 = 4; // no support for compressed instructions extension, yet
         OPER2_CSR:
-            operand2 = csr_rdata_i;
+            operand2 = '0;
         OPER2_ZERO:
             operand2 = '0;
         default:;
@@ -218,7 +214,7 @@ begin
         BNJ_JALR:
         begin
             new_pc_en = 1'b1;
-            branch_target_o = rs1_data + imm_i;
+            branch_target_o = rs1ValueE + imm_i;
         end
 
         BNJ_BRANCH:
@@ -230,14 +226,14 @@ begin
     endcase
 end
 
+flopenrc #(32) rs1ValueD_pipe (clk_i, rstn_i, flush_i, !stall_i, rs1ValueE, rs1ValueM_o);
+
 // pipeline registers and outputs
 always_ff @(posedge clk_i)
 begin : ex_mem_pip
     if (!rstn_i || flush_i)
     begin
         mem_oper_o <= MEM_NOP;
-        csr_we_o <= '0;
-        is_csr_o <= '0;
         trap_o <= NO_TRAP;
         instr_valid_o <= '0;
         write_rd_o <= 0;
@@ -247,13 +243,9 @@ begin : ex_mem_pip
         // TODO: rename alu_result_o
         // since it doesn't really reflect alu_result
         // it is really the value to write to rd if any
-        alu_result_o <= is_csr_i ? csr_rdata_i : alu_result;
-        alu_oper2_o <= rs2_data;
+        alu_result_o <= alu_result;
+        alu_oper2_o <= rs2ValueE;
         mem_oper_o <= mem_oper_i;
-        csr_wdata_o <= alu_result;
-        csr_waddr_o <= csr_waddr_i;
-        csr_we_o <= csr_we_i;
-        is_csr_o <= is_csr_i;
         trap_o <= trap_i;
         pc_o <= pc_i;
         instr_valid_o <= instr_valid_i;

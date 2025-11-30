@@ -14,6 +14,8 @@ import csr_pkg::*;
     // ID stage
     input [4:0] rs1D_i,
     input [4:0] rs2D_i,
+    input csr_readD_i,
+    input csr_writeM_i,
 
     // ID/EX pipeline
     input [4:0] rs1E_i,
@@ -53,10 +55,6 @@ import csr_pkg::*;
     input id_ex_instr_valid_i,
     input ex_mem_instr_valid_i,
     input mem_wb_instr_valid_i,
-
-    // to handle CSR read/write side effects
-    input ex_is_csr_i,
-    input mem_is_csr_i,
 
     // for interrupt handling
     input priv_lvl_e current_plvl_i,
@@ -144,31 +142,19 @@ assign forward_ex_mem_data_o = ex_mem_alu_result_i; // through here just for cle
 assign forward_mem_wb_data_o = is_mem_oper_load(mem_wb_mem_oper_i) ? mem_wb_lsu_rdata_i
                                 : mem_wb_alu_result_i; // through here just for cleanliness
 
+// TODO: come on this doesn't belong here
+logic csr_readE;
+flopenrc #(1) execute_stage_pipe (clk_i, rstn_i, id_ex_flush_o, !id_ex_stall_o, csr_readD_i, csr_readE);
+
 // Hazard Section
 
 // handle use after load hazard
-
-// to detect this case, the use instruction will be stalled in the Decode stage until the forwarding pass
-// can satisfy its requirements
-
-// a load in mem1 has the value we need
-// wire value_in_mem = is_mem_oper_load(ex_mem_mem_oper_i) &&
-//     ((rdM_i == rs1E_i) || (rdM_i == rs2E_i));
-
-// wire value_in_mem_rs1 = is_mem_oper_load(ex_mem_mem_oper_i) && (rdM_i == rs1E_i);
-// wire value_in_mem_rs2 = is_mem_oper_load(ex_mem_mem_oper_i) && (rdM_i == rs2E_i);
-
-// a load in mem2 has the value we need
-// wire value_in_mem2_rs1 = is_mem_oper_load(mem1_mem2_mem_oper_i) && (mem1_mem2_rd_addr_i == rs1E_i);
-// wire value_in_mem2_rs2 = is_mem_oper_load(mem1_mem2_mem_oper_i) && (mem1_mem2_rd_addr_i == rs2E_i);
-
-// we will stall the use instruction in EX only if the value is produced by a load in MEM1
-// or if the value is produced by a load in MEM2 but not when an instruction (non load) in MEM1 can produce the value
-// wire load_use_hzrd = (value_in_mem_rs1 && !forward_ex_mem_rs1) || (value_in_mem_rs2 && !forward_ex_mem_rs2);
-
 wire match_d_e = ((rs1D_i == rdE_i) | (rs2D_i == rdE_i)) & (rdE_i != 0);
+wire mem_load_use_hzrd = is_mem_oper_load(id_ex_mem_oper_i) & match_d_e;
+wire csr_load_use_hzrd = csr_readE & match_d_e;
+
 // this is detected in the decode stage
-wire load_use_hzrd = is_mem_oper_load(id_ex_mem_oper_i) & match_d_e;
+wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd;
 
 // For now, the cpu always predicts that the branch is not taken and continues
 // On a mispredict, flush the 2 instruction after the branch and continue from the new PC
@@ -260,8 +246,7 @@ begin: if_steering
         trap_code: mem_trap_i[3:0]
     };
 
-    if (take_exception)
-    begin
+    if (take_exception) begin
         // MRET
         if (mem_trap_i == MRET)
         begin
@@ -275,9 +260,8 @@ begin: if_steering
             pc_sel_o = PC_TRAP;
             is_trap_o = 1'b1;
         end
-    end
-    else if (take_irq)
-    begin
+    end else if (take_irq) begin
+
         pc_sel_o = PC_TRAP;
         new_pc_en_o = 1'b1;
         is_trap_o = 1'b1;
@@ -287,62 +271,25 @@ begin: if_steering
             irq: 1'b1,
             trap_code: interrupt_code
         };
-    end
-    else if (ex_new_pc_en_i)
-    begin
+    end else if (ex_new_pc_en_i) begin // branch or jump taken
+    
+        new_pc_en_o = 1'b1; 
+    end else if (csr_writeM_i) begin
+        // any CSR write causes a pipeline flush
         new_pc_en_o = 1'b1;
+        pc_sel_o = PC_CSRW;
     end
 end
 
 // if stage N needs to stall, then so does stage N-1 and so on
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
-// assign mem2_wb_stall_o = mem_stall_needed_i || lsu_req_stall_i;
-// assign mem2_wb_flush_o = '0;
-
-// assign mem1_mem2_stall_o = mem2_wb_stall_o;
-// 
-// assign ex_mem1_stall_o = mem1_mem2_stall_o;
-// let stall take priority over flushes, this fixes the case where an instruction say X is stuck in ex needing an operand which is yet to become ready
-// normally we would stall if - id and flush ex but if a later stage like mem1 or mem2 needs to stall, we can't flush ex since that
-// would erase the instruction older than X
-
-// assign id_ex_stall_o = load_use_hzrd || ex_mem1_stall_o;
-
-// assign if_stall_o = ex_is_csr_i || mem1_is_csr_i || id_ex_stall_o || (state == IRQ_WAIT);
-// assign if_flush_o = '0;
-
-// always_comb
-// begin: pipeline_stage_control
-//     mem1_mem2_flush_o = lsu_req_stall_i & !mem1_mem2_stall_o;
-//     ex_mem1_flush_o = load_use_hzrd & !ex_mem1_stall_o;
-//     id_ex_flush_o = if_stall_o & !id_ex_stall_o; // need to flush id_ex if we are currently not accepting any instructions, but don't flush if a stall is requested
-//     // since this could mean a general pipeline stall is requested and the instruction in id_ex is to be kept
-
-//     take_exception = '0;
-
-//     // instruction in the MEM2 stage raised a trap
-//     if (trap_happened)
-//     begin
-//         id_ex_flush_o = 1'b1;
-//         ex_mem1_flush_o = 1'b1;
-//         mem1_mem2_flush_o = 1'b1;
-//         take_exception = 1'b1;
-//     end
-//     else if (ex_new_pc_en_i) // EX determined that the branch was taken
-//     begin
-//         // for now the branch is always predicted as not taken, hence if it's taken
-//         // we must flush the wrong instruction currently in id_ex
-//         id_ex_flush_o = 1'b1;
-//     end
-// end
-
 assign take_exception = trap_happened;
 
-wire flush_causeD = 1'b0;
-wire flush_causeE = trap_happened | ex_new_pc_en_i;
-wire flush_causeM = trap_happened;
+wire flush_causeD = csr_writeM_i;
+wire flush_causeE = trap_happened | ex_new_pc_en_i | csr_writeM_i;
+wire flush_causeM = trap_happened | csr_writeM_i;
 
-wire stall_causeD = ((state == IRQ_WAIT) | ex_is_csr_i | mem_is_csr_i | load_use_hzrd)& ~flush_causeD;
+wire stall_causeD = ((state == IRQ_WAIT) | load_use_hzrd)& ~flush_causeD;
 wire stall_causeE = 1'b0; // can't stall in EX for now
 wire stall_causeM = mem_stall_needed_i & ~flush_causeM;
 

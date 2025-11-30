@@ -63,6 +63,8 @@ ${PRJ_DIR}/core/reg_file.sv
 ${PRJ_DIR}/core/write_back.sv
 ${PRJ_DIR}/core/perf_counter.sv
 ${PRJ_DIR}/core/cs_registers.sv
+${PRJ_DIR}/core/datapath.sv
+${PRJ_DIR}/core/privileged.sv
 ${PRJ_DIR}/core/csr.sv
 ${PRJ_DIR}/core/stage_mem1.sv
 ${PRJ_DIR}/core/lsu.sv

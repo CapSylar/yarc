@@ -31,14 +31,16 @@ import csr_pkg::*;
 
 // Driven by the Fetch stage
 logic if_instr_valid;
-logic [31:0] if_instr;
-logic [31:0] if_pc;
+logic [31:0] instrD;
+logic [31:0] instrE;
+logic [31:0] instrM;
+logic [31:0] pcD;
 
 // Driven by the Register file
 logic [31:0] rs1_data, rs2_data;
 
 // Driven by the CS Register file
-logic [31:0] csr_rdata;
+logic [31:0] csr_rdataM, csr_rdataW;
 logic [31:0] csr_mepc;
 priv_lvl_e current_plvl;
 mtvec_t csr_mtvec;
@@ -47,25 +49,24 @@ irqs_t irq_pending;
 
 // Driven by the Decode stage
 logic [4:0] rs1_addr, rs2_addr;
-logic csr_re;
-logic [11:0] csr_raddr;
-logic [31:0] id_ex_pc, id_ex_rs1_data, id_ex_rs2_data, id_ex_imm;
+logic csr_readD;
+// logic [11:0] csr_raddr;
+logic [31:0] pcE, id_ex_rs1_data, id_ex_rs2_data, id_ex_imm;
 alu_oper1_src_t id_ex_alu_oper1_src;
 alu_oper2_src_t id_ex_alu_oper2_src;
 bnj_oper_t id_ex_bnj_oper;
-logic id_ex_is_csr;
 logic id_ex_instr_valid;
 alu_oper_t id_ex_alu_oper;
 mem_oper_t id_ex_mem_oper;
 logic [11:0] id_ex_csr_waddr;
-logic id_ex_csr_we;
+logic csr_writeE;
 logic id_ex_write_rd;
+result_src_e result_srcE, result_srcW;
 logic [4:0] id_ex_rd_addr;
 logic [4:0] id_ex_rs1_addr;
 logic [4:0] id_ex_rs2_addr;
 logic id_is_csr;
 exc_t id_ex_trap;
-logic [31:0] id_ex_csr_rdata;
 
 // Driven by the Ex stage
 logic [31:0] ex_mem1_alu_result;
@@ -74,7 +75,6 @@ mem_oper_t ex_mem1_mem_oper;
 logic [31:0] ex_mem1_csr_wdata;
 logic [11:0] ex_mem1_csr_waddr;
 logic ex_mem1_csr_we;
-logic ex_mem_is_csr;
 logic ex_mem1_write_rd;
 logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
@@ -82,8 +82,9 @@ logic ex_new_pc_en;
 exc_t ex_mem_trap;
 logic [31:0] ex_mem1_pc;
 logic ex_mem_instr_valid;
+logic [31:0] rs1ValueE;
 
-// Driven by the Mem1 stage
+// Driven by the Mem stage
 logic lsu_req;
 logic lsu_we;
 logic [31:0] lsu_addr;
@@ -92,11 +93,10 @@ logic [31:0] lsu_rdata;
 logic [3:0] lsu_wsel_byte;
 logic [31:0] lsu_wdata;
 exc_t mem_wb_trap;
-// logic [31:0] mem1_mem2_csr_wdata;
-// logic [31:0] mem1_mem2_lsu_rdata;
-// logic [11:0] mem1_mem2_csr_waddr;
+logic [31:0] rs1ValueM;
+logic csr_writeM, csr_readM;
 
-// Driven by the Mem2 stage
+// Driven by the WB stage
 logic mem_wb_write_rd;
 logic mem_wb_instr_valid;
 logic [4:0] mem_wb_rd_addr;
@@ -104,9 +104,9 @@ logic [31:0] mem_wb_alu_result;
 logic [31:0] mem_wb_lsu_rdata;
 logic mem_stall_needed;
 mem_oper_t mem_wb_mem_oper;
-logic [31:0] csr_wdata;
-logic [11:0] csr_waddr;
-logic csr_we;
+// logic [31:0] csr_wdata;
+// logic [11:0] csr_waddr;
+// logic csr_we;
 exc_t mem_trap;
 
 // Driven by the WB Data Interface
@@ -147,8 +147,8 @@ wb_prefetch wb_prefetch_i
     .wb_if(instr_fetch_wb_if),
 
     .valid_o(if_instr_valid),
-    .instr_o(if_instr),
-    .pc_o(if_pc),
+    .instr_o(instrD),
+    .pc_o(pcD),
 
     .stall_i(if_stall),
     .flush_cache_i(if_flush),
@@ -158,6 +158,7 @@ wb_prefetch wb_prefetch_i
     .csr_mepc_i(csr_mepc),
     .mcause_i(mcause),
     .mtvec_i(csr_mtvec),
+    .pcE_i(pcE),
 
     .new_pc_en_i(new_pc_en),
     .pc_sel_i(pc_sel)
@@ -182,21 +183,49 @@ reg_file reg_file_i
     .wdata_i(regf_wdata)
 );
 
-// CS Register file
-cs_registers cs_registers_i
+datapath datapath_i (
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+
+    .csr_readD_i(csr_readD),
+
+    .csr_writeE_i(csr_writeE),
+    .result_srcE_i(result_srcE),
+    
+    .stallE_i(id_ex_stall),
+    .flushE_i(id_ex_flush),
+
+    .stallM_i(ex_mem_stall),
+    .flushM_i(ex_mem_flush),
+
+    .instrD_i(instrD),
+    .instrE_o(instrE),
+    .instrM_o(instrM),
+
+    // .rs1ValueE_i(rs1ValueE),
+    // .rs1ValueM_o(rs1ValueM),
+
+    .csr_readM_o(csr_readM),
+    .csr_writeM_o(csr_writeM),
+
+    .csr_rdataM_i(csr_rdataM),
+    .csr_rdataW_o(csr_rdataW),
+    .result_srcW_o(result_srcW)
+);
+
+privileged privileged_i 
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
-    // read port
-    .csr_re_i(csr_re),
-    .csr_raddr_i(csr_raddr),
-    .csr_rdata_o(csr_rdata),
+    .stallM_i(ex_mem_stall),
 
-    // write port
-    .csr_we_i(csr_we),
-    .csr_waddr_i(csr_waddr),
-    .csr_wdata_i(csr_wdata),
+    .csr_readM_i(csr_readM),
+    .csr_writeM_i(csr_writeM),
+    .rs1ValueM_i(rs1ValueM),
+    .csr_rdataM_o(csr_rdataM),
+
+    .instructionM_i(instrM),
 
     // output some cs registers
     .csr_mepc_o(csr_mepc),
@@ -220,6 +249,44 @@ cs_registers cs_registers_i
     .instr_ret_i(mem_wb_instr_valid && !mem_wb_stall)
 );
 
+// CS Register file
+// cs_registers cs_registers_i
+// (
+//     .clk_i(clk_i),
+//     .rstn_i(rstn_i),
+
+//     // read port
+//     .csr_re_i(csr_readD),
+//     .csr_raddr_i(csr_raddr),
+//     .csr_rdata_o(csr_rdataM),
+
+//     // write port
+//     .csr_we_i(csr_we),
+//     .csr_waddr_i(csr_waddr),
+//     .csr_wdata_i(csr_wdata),
+
+//     // output some cs registers
+//     .csr_mepc_o(csr_mepc),
+//     .csr_mtvec_o(csr_mtvec),
+//     .csr_mstatus_o(csr_mstatus),
+//     .current_plvl_o(current_plvl),
+
+//     .irq_pending_o(irq_pending),
+
+//     // mret, traps...
+//     .csr_mret_i(is_mret),
+//     .is_trap_i(is_trap),
+//     .mcause_i(mcause),
+//     .exc_pc_i(exc_pc),
+//     // interrupts
+//     .irq_software_i('0),
+//     .irq_timer_i(irq_timer_i),
+//     .irq_external_i(irq_external_i),
+
+//     // used by the performance counters
+//     .instr_ret_i(mem_wb_instr_valid && !mem_wb_stall)
+// );
+
 // Decode Stage
 decode decode_i
 (
@@ -239,13 +306,11 @@ decode decode_i
 
     // csr unit <-> decode module
     // read port
-    .csr_re_o(csr_re),
-    .csr_raddr_o(csr_raddr),
-    .csr_rdata_i(csr_rdata),
+    .csr_re_o(csr_readD),
 
     // from IF stage
-    .instr_i(if_instr), // instruction
-    .pc_i(if_pc), // pc of the instruction
+    .instr_i(instrD), // instruction
+    .pc_i(pcD), // pc of the instruction
 
     // ID/EX pipeline registers ************************************************
 
@@ -254,31 +319,30 @@ decode decode_i
     .flush_i(id_ex_flush), // zero the register contents
 
     // for direct use by the EX stage
-    .pc_o(id_ex_pc), // forwarded from IF/ID
+    .pc_o(pcE), // forwarded from IF/ID
     .rs1_data_o(id_ex_rs1_data),
     .rs2_data_o(id_ex_rs2_data),
     .imm_o(id_ex_imm),
-    .csr_rdata_o(id_ex_csr_rdata),
+    // .csr_rdata_o(id_ex_csr_rdata),
     .alu_oper1_src_o(id_ex_alu_oper1_src),
     .alu_oper2_src_o(id_ex_alu_oper2_src),
     .bnj_oper_o(id_ex_bnj_oper),
     .alu_oper_o(id_ex_alu_oper),
-    .is_csr_o(id_ex_is_csr),
     .instr_valid_o(id_ex_instr_valid),
 
     // for the MEM stage
     .mem_oper_o(id_ex_mem_oper),
-    .csr_waddr_o(id_ex_csr_waddr),
-    .csr_we_o(id_ex_csr_we),
+    // .csr_waddr_o(id_ex_csr_waddr),
+    .csr_we_o(csr_writeE),
 
     // for the WB stage
     .write_rd_o(id_ex_write_rd),
+    .result_srcE_o(result_srcE),
     .rd_addr_o(id_ex_rd_addr),
 
     // used by the hazard/forwarding logic
     .rs1_addr_o(id_ex_rs1_addr),
     .rs2_addr_o(id_ex_rs2_addr),
-    .id_is_csr_o(id_is_csr),
 
     .trap_o(id_ex_trap)
 );
@@ -290,20 +354,17 @@ execute execute_i
     .rstn_i(rstn_i),
 
     // from ID/EX
-    .pc_i(id_ex_pc),
+    .pc_i(pcE),
     .rs1_data_i(id_ex_rs1_data),
     .rs2_data_i(id_ex_rs2_data),
     .imm_i(id_ex_imm),
-    .csr_rdata_i(id_ex_csr_rdata),
     .alu_oper1_src_i(id_ex_alu_oper1_src),
     .alu_oper2_src_i(id_ex_alu_oper2_src),
     .alu_oper_i(id_ex_alu_oper),
     .bnj_oper_i(id_ex_bnj_oper),
-    .is_csr_i(id_ex_is_csr),
     .instr_valid_i(id_ex_instr_valid),
     .mem_oper_i(id_ex_mem_oper),
-    .csr_waddr_i(id_ex_csr_waddr),
-    .csr_we_i(id_ex_csr_we),
+    // .csr_waddr_i(id_ex_csr_waddr),
     .trap_i(id_ex_trap),
 
     // forward to the WB stage
@@ -311,6 +372,7 @@ execute execute_i
     .rd_addr_i(id_ex_rd_addr),
 
     // EX/MEM pipeline registers
+    .rs1ValueM_o(rs1ValueM),
     
     // feedback into the pipeline register
     .stall_i(ex_mem_stall), // keep the same content in the registers
@@ -319,10 +381,7 @@ execute execute_i
     .alu_result_o(ex_mem1_alu_result),
     .alu_oper2_o(ex_mem1_alu_oper2),
     .mem_oper_o(ex_mem1_mem_oper),
-    .csr_wdata_o(ex_mem1_csr_wdata),
-    .csr_waddr_o(ex_mem1_csr_waddr),
-    .csr_we_o(ex_mem1_csr_we),
-    .is_csr_o(ex_mem_is_csr),
+    // .is_csr_o(ex_mem_is_csr),
     .trap_o(ex_mem_trap),
     .pc_o(ex_mem1_pc),
     .instr_valid_o(ex_mem_instr_valid),
@@ -349,9 +408,9 @@ stage_mem1 stage_mem1_i
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
-    .csr_wdata_o(csr_wdata),
-    .csr_waddr_o(csr_waddr),
-    .csr_we_o(csr_we),
+    // .csr_wdata_o(csr_wdata),
+    // .csr_waddr_o(csr_waddr),
+    // .csr_we_o(csr_we),
 
     // MEM1 <-> LSU
     // read port
@@ -373,7 +432,7 @@ stage_mem1 stage_mem1_i
     .csr_wdata_i(ex_mem1_csr_wdata),
     .csr_waddr_i(ex_mem1_csr_waddr),
     .instr_valid_i(ex_mem_instr_valid),
-    .is_csr_i(ex_mem_is_csr),
+    // .is_csr_i(ex_mem_is_csr),
     .csr_we_i(ex_mem1_csr_we),
 
     .trap_i(ex_mem_trap),
@@ -382,9 +441,9 @@ stage_mem1 stage_mem1_i
     .write_rd_i(ex_mem1_write_rd),
     .rd_addr_i(ex_mem1_rd_addr),
 
-    // MEM1/MEM2 pipeline registers
+    // MEM/WB pipeline registers
     .instr_valid_o(mem_wb_instr_valid),
-    .is_csr_o(mem_wb_is_csr),
+    // .is_csr_o(mem_wb_is_csr),
     .write_rd_o(mem_wb_write_rd),
     .rd_addr_o(mem_wb_rd_addr),
     .alu_result_o(mem_wb_alu_result),
@@ -426,11 +485,12 @@ write_back write_back_i
     .rstn_i(rstn_i),
 
     // from MEM/WB
-    .mem_oper_i(mem_wb_mem_oper),
+    .result_srcW_i(result_srcW),
     .write_rd_i(mem_wb_write_rd),
     .rd_addr_i(mem_wb_rd_addr),
     .alu_result_i(mem_wb_alu_result),
     .lsu_rdata_i(mem_wb_lsu_rdata),
+    .csr_rdata_i(csr_rdataW),
 
     // WB -> Register file
     .regf_write_o(regf_write),
@@ -445,11 +505,13 @@ controller controller_i
     .rstn_i(rstn_i),
 
     // from IF
-    .if_pc_i(if_pc),
+    .if_pc_i(pcD),
 
     // from ID stage
     .rs1D_i(rs1_addr),
     .rs2D_i(rs2_addr),
+    .csr_readD_i(csr_readD),
+    .csr_writeM_i(csr_writeM),
 
     // from ID/EX pipeline
     .rs1E_i(id_ex_rs1_addr),
@@ -494,10 +556,6 @@ controller controller_i
     .csr_mcause_o(mcause),
     .is_trap_o(is_trap),
     .exc_pc_o(exc_pc),
-
-    // to handle CSR read/write side effects
-    .ex_is_csr_i(id_ex_is_csr),
-    .mem_is_csr_i(ex_mem_is_csr),
 
     // for interrupt handling
     .current_plvl_i(current_plvl),

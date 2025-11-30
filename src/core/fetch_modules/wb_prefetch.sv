@@ -32,6 +32,7 @@ import csr_pkg::*;
     // target addresses
     input [31:0] branch_target_i,
     input [31:0] csr_mepc_i,
+    input [31:0] pcE_i,
     input var mcause_t mcause_i, // comes from the controller, not csr module
     input var mtvec_t mtvec_i
 );
@@ -100,6 +101,7 @@ begin
         PC_JUMP: new_pc = branch_target_i;
         PC_MEPC: new_pc = csr_mepc_i;
         PC_TRAP: new_pc = exc_target_addr;
+        PC_CSRW: new_pc = pcE_i;
         default:;
     endcase
 end

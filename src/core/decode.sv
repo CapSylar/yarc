@@ -22,8 +22,8 @@ import csr_pkg::*;
     // csr unit <-> decode module
     // read port
     output csr_re_o, // read enable
-    output [11:0] csr_raddr_o,
-    input [31:0] csr_rdata_i,
+    // output [11:0] csr_raddr_o,
+    // input [31:0] csr_rdata_i,
 
     // from IF stage
     input [31:0] instr_i, // instruction
@@ -40,27 +40,27 @@ import csr_pkg::*;
     output logic [31:0] rs1_data_o,
     output logic [31:0] rs2_data_o,
     output logic [31:0] imm_o,
-    output logic [31:0] csr_rdata_o,
+    // output logic [31:0] csr_rdata_o,
     output alu_oper1_src_t alu_oper1_src_o,
     output alu_oper2_src_t alu_oper2_src_o,
     output bnj_oper_t bnj_oper_o,
     output alu_oper_t alu_oper_o,
-    output logic is_csr_o,
     output logic instr_valid_o,
 
     // for the MEM stage
     output mem_oper_t mem_oper_o,
-    output logic [11:0] csr_waddr_o,
+    // output logic [11:0] csr_waddr_o,
     output logic csr_we_o,
 
     // for the WB stage
+    output result_src_e result_srcE_o,
     output logic write_rd_o,
     output logic [4:0] rd_addr_o,
 
     // used by the hazard/forwarding logic
     output logic [4:0] rs1_addr_o,
     output logic [4:0] rs2_addr_o,
-    output logic id_is_csr_o, // driven combinationally
+    // output logic id_is_csr_o, // driven combinationally
 
     output exc_t trap_o
 );
@@ -92,7 +92,8 @@ assign imm_csr = 32'({instr_i[19:15]}); // used for immediate csr instructions
 
 alu_oper_t alu_oper;
 logic [31:0] curr_imm;
-logic write_rd; // write back
+logic write_rd;
+result_src_e result_src;
 
 alu_oper1_src_t alu_oper1_src;
 alu_oper2_src_t alu_oper2_src;
@@ -103,7 +104,7 @@ mem_oper_t mem_oper; // memory operation if any
 exc_t trap;
 logic csr_re;
 logic csr_we;
-logic is_csr;
+// logic is_csr;
 
 // decode
 always_comb
@@ -113,6 +114,7 @@ begin : main_decode
     alu_oper2_src = OPER2_RS2;
 
     write_rd = '0;
+    result_src = RESULT_ALU;
     curr_imm = '0;
     bnj_oper = BNJ_NO; // no branch
     mem_oper = MEM_NOP;
@@ -120,7 +122,7 @@ begin : main_decode
     trap = NO_TRAP;
     csr_re = '0;
     csr_we = '0;
-    is_csr = '0;
+    // is_csr = '0;
 
     // zero out control signals when the instruction being fed in is not valid
     // could avoid some read side effects in some registers in the future
@@ -176,6 +178,7 @@ begin : main_decode
                 curr_imm = imm_i;
 
                 write_rd = 1;
+                result_src = RESULT_MEM;
 
                 mem_oper = mem_oper_t'({1'b0, func3});
             end
@@ -222,7 +225,8 @@ begin : main_decode
                 else  // CSR instruction
                 begin
                     write_rd = 1'b1;
-                    is_csr = 1'b1;
+                    result_src = RESULT_CSR;
+                    // is_csr = 1'b1;
                     // determine if csr will be read
                     // In CSRRW*: if rd = Zero, the csr is not read and any read side-effects will not be triggered
                     csr_re = ((system_opc_t'(func3) == CSRRW ||
@@ -235,18 +239,18 @@ begin : main_decode
                         (imm_csr == '0 && (system_opc_t'(func3) == CSRRSI || system_opc_t'(func3) == CSRRCI))) ? 1'b0 : 1'b1;
 
                     // handle CSR* instructions
-                    if (func3[2]) // indicates the immediate variant
-                    begin
-                        alu_oper1_src = OPER1_CSR_IMM;
-                        curr_imm = imm_csr;
-                    end
-                    else
-                        alu_oper1_src = OPER1_RS1;
+                    // if (func3[2]) // indicates the immediate variant
+                    // begin
+                        // alu_oper1_src = OPER1_CSR_IMM;
+                        // curr_imm = imm_csr;
+                    // end
+                    // else
+                        // alu_oper1_src = OPER1_RS1;
 
-                    if (func3[1:0] == 2'b01) // CSRRW*
-                        alu_oper2_src = OPER2_ZERO;
-                    else
-                        alu_oper2_src = OPER2_CSR;
+                    // if (func3[1:0] == 2'b01) // CSRRW*
+                    //     alu_oper2_src = OPER2_ZERO;
+                    // else
+                    //     alu_oper2_src = OPER2_CSR;
                 end
             end
 
@@ -297,12 +301,12 @@ begin : alu_decode
 
         SYSTEM:
         begin
-            if (system_opc_t'(func3) == CSRRW || system_opc_t'(func3) == CSRRWI)
-                alu_oper = ALU_ADD;
-            else if (system_opc_t'(func3) == CSRRS || system_opc_t'(func3) == CSRRSI)
-                alu_oper = ALU_OR;
-            else if (system_opc_t'(func3) == CSRRC || system_opc_t'(func3) == CSRRCI)
-                alu_oper = ALU_XOR;
+            // if (system_opc_t'(func3) == CSRRW || system_opc_t'(func3) == CSRRWI)
+            //     alu_oper = ALU_ADD;
+            // else if (system_opc_t'(func3) == CSRRS || system_opc_t'(func3) == CSRRSI)
+            //     alu_oper = ALU_OR;
+            // else if (system_opc_t'(func3) == CSRRC || system_opc_t'(func3) == CSRRCI)
+            //     alu_oper = ALU_XOR;
         end
 
         default: // no need to handle anything here, already handled illegal opcodes above
@@ -314,9 +318,8 @@ end
 
 assign regf_rs1_addr_o = rs1;
 assign regf_rs2_addr_o = rs2;
-assign csr_raddr_o = csr_addr;
+// assign csr_raddr_o = csr_addr;
 assign csr_re_o = csr_re;
-assign id_is_csr_o = is_csr;
 
 always_ff @(posedge clk_i)
 begin : id_ex_pip
@@ -326,19 +329,19 @@ begin : id_ex_pip
         rs1_data_o <= 0;
         rs2_data_o <= 0;
         imm_o <= 0;
-        csr_rdata_o <= 0;
+        // csr_rdata_o <= 0;
         alu_oper1_src_o <= OPER1_RS1;
         alu_oper2_src_o <= OPER2_RS2;
         bnj_oper_o <= BNJ_NO;
         alu_oper_o <= ALU_ADD;
-        is_csr_o <= '0;
         instr_valid_o <= '0;
 
         mem_oper_o <= MEM_NOP;
-        csr_waddr_o <= 0;
+        // csr_waddr_o <= 0;
         csr_we_o <= 0;
 
         write_rd_o <= 0;
+        result_srcE_o <= RESULT_ALU;
         rd_addr_o <= 0;
 
         rs1_addr_o <= 0;
@@ -352,19 +355,19 @@ begin : id_ex_pip
         rs1_data_o <= rs1_data_i;
         rs2_data_o <= rs2_data_i;
         imm_o <= curr_imm;
-        csr_rdata_o <= csr_rdata_i;
+        // csr_rdata_o <= csr_rdata_i;
         alu_oper1_src_o <= alu_oper1_src;
         alu_oper2_src_o <= alu_oper2_src;
         bnj_oper_o <= bnj_oper;
         alu_oper_o <= alu_oper;
-        is_csr_o <= is_csr;
         instr_valid_o <= instr_valid_i;
 
         mem_oper_o <= mem_oper;
-        csr_waddr_o <= csr_addr;
+        // csr_waddr_o <= csr_addr;
         csr_we_o <= csr_we;
 
         write_rd_o <= write_rd;
+        result_srcE_o <= result_src;
         rd_addr_o <= rd;
 
         rs1_addr_o <= rs1;

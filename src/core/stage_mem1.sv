@@ -10,9 +10,9 @@ import riscv_pkg::*;
 
     // <-> CS Register File
     // write port
-    output logic [31:0] csr_wdata_o,
-    output logic [11:0] csr_waddr_o,
-    output logic csr_we_o,
+    // output logic [31:0] csr_wdata_o,
+    // output logic [11:0] csr_waddr_o,
+    // output logic csr_we_o,
 
     // Load Store Unit
     output logic lsu_req_o,
@@ -34,7 +34,7 @@ import riscv_pkg::*;
     input wire [31:0] csr_wdata_i,
     input wire [11:0] csr_waddr_i,
     input wire instr_valid_i,
-    input wire is_csr_i,
+    // input wire is_csr_i,
     input wire csr_we_i,
     input wire exc_t trap_i,
 
@@ -44,7 +44,7 @@ import riscv_pkg::*;
 
     // MEM1/MEM2 pipeline registers
     output logic instr_valid_o,
-    output logic is_csr_o,
+    // output logic is_csr_o,
     output logic write_rd_o,
     output logic [4:0] rd_addr_o,
     output logic [31:0] alu_result_o,
@@ -194,13 +194,13 @@ assign lsu_we_o = is_write;
 wire no_csr_commit = stall_i | trap_i != NO_TRAP;
 
 // csrs
-assign csr_we_o = csr_we_i & ~no_csr_commit;
-assign csr_wdata_o = csr_wdata_i;
-assign csr_waddr_o = csr_waddr_i;
+// assign csr_we_o = csr_we_i & ~no_csr_commit;
+// assign csr_wdata_o = csr_wdata_i;
+// assign csr_waddr_o = csr_waddr_i;
 
 // pipeline registers
 flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flush_i, !stall_i, write_rd_i, write_rd_o);
-flopenrc #(1) is_csr_reg        (clk_i, rstn_i, flush_i, !stall_i, is_csr_i, is_csr_o);
+// flopenrc #(1) is_csr_reg        (clk_i, rstn_i, flush_i, !stall_i, is_csr_i, is_csr_o);
 flopenrc #(32) alu_result_reg   (clk_i, rstn_i, flush_i, !stall_i, alu_result_i, alu_result_o);
 flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flush_i, !stall_i, rdata, lsu_rdata_o);
 flopenrc_type #(mem_oper_t, MEM_NOP) mem_oper_reg     (clk_i, rstn_i, flush_i, !stall_i, mem_oper_i, mem_oper_o);
