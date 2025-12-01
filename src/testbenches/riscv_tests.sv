@@ -30,7 +30,7 @@ wishbone_if imem_wb_if();
 wishbone_if dmem_wb_if();
 
 localparam SIZE_POT = 14;
-dp_mem_wb #(.WIDTH(32), .SIZE_POT(SIZE_POT), .MEMFILE(MEMFILE))
+dp_mem_wb #(.DATA_WIDTH(32), .SIZE_POT_WORDS(SIZE_POT), .MEMFILE(MEMFILE))
 mem_i
 (
     .clk_i(clk),
@@ -43,23 +43,26 @@ mem_i
     .wb_if2(dmem_wb_if.SLAVE)
 );
 
-yarc_platform yarc_platform_i
+core_top core_i
 (
     .clk_i(clk),
     .rstn_i(rstn),
 
     // Core <-> DMEM
-    .dmem_wb_if(dmem_wb_if.MASTER),
+    .lsu_wb_if(dmem_wb_if.MASTER),
 
     // Core <-> IMEM
     .instr_fetch_wb_if(imem_wb_if.MASTER),
 
-    // Platform <-> Peripherals
-    .led_status_o()
+    .irq_timer_i('0),
+    .irq_external_i('0)
 );
 
+`define TRAP_LINE core_i.mem_wb_trap
+`define REG_FILE core_i.reg_file_i.regf
+
 exc_t trap;
-assign trap = yarc_platform_i.core_i.mem2_trap;
+assign trap = `TRAP_LINE;
 
 logic stop_sim;
 
@@ -81,11 +84,12 @@ task automatic eval_result(output success);
         if (stop_sim)
         begin
             // test has stopped, check if the test passed or failed
-            if (yarc_platform_i.core_i.reg_file_i.regf[3] == 1 && 
-                yarc_platform_i.core_i.reg_file_i.regf[17] == 93 &&
-                yarc_platform_i.core_i.reg_file_i.regf[10] == 0 )
-            begin
-                success = 1;
+            if (`REG_FILE[3] == 1 && 
+                `REG_FILE[17] == 93 &&
+                `REG_FILE[10] == 0 ) begin
+                success = 0;
+            end else begin
+                success = `REG_FILE[10];
             end
 
             break;
@@ -134,10 +138,10 @@ task automatic run_test();
     bit success = 0;
     eval_result(success);
 
-    if (success)
+    if (success == 0)
         $display("TEST OK");
     else
-        $display("TEST FAILED");
+        $display("TEST FAILED, error code: %d", success);
 
     // dump the memory signature so it can be checked with a reference
     $display("sig start: %x || sig end: %x", begin_signature, end_signature);

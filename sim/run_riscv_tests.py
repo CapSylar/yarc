@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys, getopt, glob, re
 import subprocess
 import filecmp
@@ -49,12 +50,6 @@ def run_tests(argv):
         signature_file = f"./temp/{filename}_testsig.txt"
 
         # first run questa over the testfile
-        compile_command = f"make questa_compile MEMFILE={vmem_file}"
-
-        if dump:
-            print(f"build command: {colored(compile_command, 'yellow')}")
-
-        subprocess.run([compile_command], shell=True, capture_output=True)
 
         # extract end_signature location from elf file
         completed = subprocess.run([f"readelf -s {testfile} | grep end_signature | awk '{{print $2}}'"], capture_output=True, shell=True,)
@@ -63,7 +58,7 @@ def run_tests(argv):
         completed = subprocess.run([f"readelf -s {testfile} | grep begin_signature | awk '{{print $2}}'"], capture_output=True, shell=True)
         begin_signature = completed.stdout.decode().strip()
 
-        run_command = f"make questa_run begin_signature={begin_signature} end_signature={end_signature} sig_filename_o={signature_file} IS_GUI=0"
+        run_command = f"make questa MODE=compliance MEMFILE={vmem_file} begin_signature={begin_signature} end_signature={end_signature} sig_filename_o={signature_file} IS_GUI=0"
         
         if dump:
             print(f"run command: {colored(run_command,'yellow')}")
@@ -105,4 +100,10 @@ def get_colored_str(status: bool):
     return colored("True", "green") if status else colored("False", "red")
 
 if __name__ == "__main__":
+    # make sure prerequisites like spike and objcopy riscv are present
+    prerequisites = ["spike", "riscv-none-elf-objcopy", "readelf"]
+    for pre in prerequisites:
+        if not shutil.which(pre):
+            print(colored(f"Error: {pre} not found in PATH. Please install it before running the tests.", "red"))
+            sys.exit(1) 
     run_tests(sys.argv[1:])

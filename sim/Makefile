@@ -1,20 +1,39 @@
 # runs the simulations
 
+# MODE can be app or compliance
+MODE ?= app
+
+ifeq ($(MODE),app)
+
+	TOPMOD := core_with_mem
+	IMEMFILE := ""
+	DMEMFILE := ""
+	DEFINES := -GIMEMFILE=\"$(IMEMFILE)\" -GDMEMFILE=\"$(DMEMFILE)\" -GINIT_DDR3_MEMORY=$(INIT_DDR3_MEMORY) \
+		-GDDR3_MEMFILE=\"$(DDR3_MEMFILE)\"
+
+else ifeq ($(MODE),compliance)
+
+	TOPMOD := riscv_tests
+
+	# signature start and end
+	begin_signature ?= 0
+	end_signature ?= 0
+	sig_filename_o ?= ""
+
+	DEFINES := +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\"
+else
+	$(error MODE $(MODE) not supported. Supported modes are app and compliance)
+endif
+
 # simulation definitions
-IMEMFILE := ""
-DMEMFILE := ""
 MEMFILE := ""
 CURRENT_DIR=$(shell pwd)
 
-TOPMOD  := riscv_tests
-TOPMOD_FILE := $(TOPMOD).sv
 SRC_DIR = $(CURRENT_DIR)/../src
 $(info SRC_DIR is $(SRC_DIR))
 SIMPROG := tb
 SIMFILE := $(SIMPROG).cpp
 VDIRFB  := ./obj_dir
-DEFINES := -GIMEMFILE=\"$(IMEMFILE)\" -GDMEMFILE=\"$(DMEMFILE)\" -GINIT_DDR3_MEMORY=$(INIT_DDR3_MEMORY) \
-	-GDDR3_MEMFILE=\"$(DDR3_MEMFILE)\"
 TOP_PARAMS := $(DEFINES)
 
 VIVADO_SIM_FILES_PATH := /home/robin/workdir/xilinx_sims
@@ -33,10 +52,6 @@ TIMESCALE := -timescale "1ps/1ps"
 VERILATOR=verilator
 VFLAGS= -cc --timing -f files.tcl $(TOP_PARAMS) --top-module $(TOPMOD) -O3 --noassert --x-assign fast --x-initial fast --timescale "1ns/1ps" --trace-fst
 
-# signature start and end
-begin_signature ?= 0
-end_signature ?= 0
-sig_filename_o ?= ""
 IS_GUI ?= 1
 
 VERILATOR_CFLAGS := `sdl2-config --cflags` -O3
@@ -58,7 +73,7 @@ run_sim:
 
 # QUESTASIM ARGUMENTS
 LIB_NAME ?= work
-# TOP_PARAMS += +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o}
+# TOP_PARAMS += +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\"
 DO_FILE := ""
 
 ifeq ($(IS_GUI), 1)

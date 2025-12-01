@@ -113,3 +113,4 @@ ${PRJ_DIR}/testbenches/rxuart_printer.sv
 ${PRJ_DIR}/testbenches/txuart_sender.sv
 ${PRJ_DIR}/testbenches/core_with_mem.sv
 ${PRJ_DIR}/testbenches/verilator_top.sv
+${PRJ_DIR}/testbenches/riscv_tests.sv
