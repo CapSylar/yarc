@@ -58,7 +58,7 @@ bnj_oper_t id_ex_bnj_oper;
 logic id_ex_instr_valid;
 alu_oper_t id_ex_alu_oper;
 mem_oper_t id_ex_mem_oper;
-logic [11:0] id_ex_csr_waddr;
+// logic [11:0] id_ex_csr_waddr;
 logic csr_writeE;
 logic id_ex_write_rd;
 result_src_e result_srcE, result_srcW;
@@ -82,7 +82,7 @@ logic ex_new_pc_en;
 exc_t ex_mem_trap;
 logic [31:0] ex_mem1_pc;
 logic ex_mem_instr_valid;
-logic [31:0] rs1ValueE;
+// logic [31:0] rs1ValueE;
 
 // Driven by the Mem stage
 logic lsu_req;

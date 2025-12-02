@@ -110,7 +110,9 @@ always_comb begin
         end else if ((rs1E_i == rdW_i) & mem_wb_write_rd_i) begin
             forward_rs1 = 2'b01;
         end
+    end
 
+    if (rs2E_i != 0) begin
         if ((rs2E_i == rdM_i) & ex_mem_write_rd_i) begin
             forward_rs2 = 2'b10;
         end else if ((rs2E_i == rdW_i) & mem_wb_write_rd_i) begin

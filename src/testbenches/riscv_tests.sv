@@ -96,8 +96,10 @@ task automatic eval_result(output success);
         end
     end
 
-    if (ticks == max_ticks)
+    if (ticks == max_ticks) begin
         $display("test timed out!");
+        success = 666;
+    end
 
 endtask: eval_result
 
