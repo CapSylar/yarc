@@ -13,16 +13,15 @@ import riscv_pkg::*;
     input wire [31:0] instrD_i,
 
     output logic [31:0] instrE_o,
+    input var exc_t sys_instrE_i,
     output logic [31:0] instrM_o,
+    output exc_t sys_instrM_o,
 
     input wire stallE_i,
     input wire flushE_i,
 
     input wire stallM_i,
     input wire flushM_i,
-
-    // input wire [31:0] rs1ValueE_i,
-    // output logic [31:0] rs1ValueM_o,
 
     output logic csr_readM_o,
     output logic csr_writeM_o,
@@ -39,6 +38,7 @@ logic csr_readE;
 // execute stage pipeline
 flopenrc_type #(logic [31:0], nop) instructionE_pipe (clk_i, rstn_i, flushE_i, !stallE_i, instrD_i, instrE_o);
 flopenrc #(1) csr_readD_pipe (clk_i, rstn_i, flushE_i, !stallE_i, csr_readD_i, csr_readE);
+flopenrc_type #(exc_t, NO_SYS) sys_instrM_pipe (clk_i, rstn_i, flushE_i, ~stallE_i, sys_instrE_i, sys_instrM_o);
 
 // memory stage pipeline
 flopenrc_type #(logic [31:0], nop) instructionM_pipe (clk_i, rstn_i, flushM_i, !stallM_i, instrE_o, instrM_o);

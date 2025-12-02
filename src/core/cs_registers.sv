@@ -4,21 +4,21 @@
 module cs_registers
 import csr_pkg::*;
 (
-    input clk_i,
-    input rstn_i,
+    input wire clk_i,
+    input wire rstn_i,
 
     // read port
-    input csr_re_i,
-    input [11:0] csr_raddr_i,
-    output [31:0] csr_rdata_o,
+    input wire csr_re_i,
+    input wire [11:0] csr_raddr_i,
+    output logic [31:0] csr_rdata_o,
 
     // write port
-    input csr_we_i,
-    input [11:0] csr_waddr_i,
-    input [31:0] csr_wdata_i,
+    input wire csr_we_i,
+    input wire [11:0] csr_waddr_i,
+    input wire [31:0] csr_wdata_i,
 
     // output some cs registers
-    output [31:0] csr_mepc_o,
+    output logic [31:0] csr_mepc_o,
     output mtvec_t csr_mtvec_o,
     output mstatus_t csr_mstatus_o,
     output priv_lvl_e current_plvl_o,
@@ -26,17 +26,19 @@ import csr_pkg::*;
     output irqs_t irq_pending_o,
 
     // mret, traps...
-    input csr_mret_i,
-    input is_trap_i,
-    input wire mcause_t mcause_i,
-    input [31:0] exc_pc_i,
+    input wire mret_i,
+    input wire is_trap_i,
+    input var mcause_t trap_mcause_i,
+    input wire [31:0] trap_mepc_i,
+    input wire [31:0] trap_mtval_i,
+
     // interrupts
-    input irq_software_i,
-    input irq_timer_i,
-    input irq_external_i,
+    input wire irq_software_i,
+    input wire irq_timer_i,
+    input wire irq_external_i,
 
     // used by the performance counters
-    input instr_ret_i
+    input wire instr_ret_i
 );
 
 csr_t csr_raddr, csr_waddr;
@@ -114,7 +116,7 @@ csr #(.Width(32), .ResetValue(MIMP_ID)) csr_mimpid
 localparam logic [31:0] MHART_ID = 32'd0;
 
 mstatus_t mstatus_d, mstatus_q;
-logic mstatus_wen;
+logic mstatus_we;
 parameter mstatus_t MSTATUS_RST_VALUE = '{
     mie: 1'b0,
     mpie: 1'b1,
@@ -127,20 +129,20 @@ csr #(.Width($bits(mstatus_t)), .ResetValue(MSTATUS_RST_VALUE)) csr_mstatus
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mstatus_wen),
+    .wr_en_i(mstatus_we),
     .wr_data_i(mstatus_d),
     .rd_data_o(mstatus_q)
 );
 
 mtvec_t mtvec_d, mtvec_q;
-logic mtvec_wen;
+logic mtvec_we;
 
 // MTVEC: Machine Trap-Vector Base-Address Register
 csr #(.Width($bits(mtvec_t)), .ResetValue('0)) csr_mtvec
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mtvec_wen),
+    .wr_en_i(mtvec_we),
     .wr_data_i(mtvec_d),
     .rd_data_o(mtvec_q)
 );
@@ -152,19 +154,19 @@ assign mip_d.m_timer = irq_timer_i;
 assign mip_d.m_external = irq_external_i;
 
 irqs_t mie_d, mie_q;
-logic mie_wen;
+logic mie_we;
 
 // MIE: Machine Interrupt Enable Register
 csr #(.Width($bits(irqs_t)), .ResetValue('0)) csr_mie
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mie_wen),
+    .wr_en_i(mie_we),
     .wr_data_i(mie_d),
     .rd_data_o(mie_q)
 );
 
-logic mcountinhibit_wen;
+logic mcountinhibit_we;
 logic [31:0] mcountinhibit_d, mcountinhibit_q;
 
 // MCOUNTINHIBIT: Machine Counter-Inhibit CSR
@@ -172,7 +174,7 @@ csr #(.Width(32), .ResetValue('0)) csr_mcountinhibit
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mcountinhibit_wen),
+    .wr_en_i(mcountinhibit_we),
     .wr_data_i(mcountinhibit_d),
     .rd_data_o(mcountinhibit_q)
 );
@@ -232,7 +234,7 @@ perf_counter csr_minstret
 //     .rd_data_o(mcounteren_q)
 // );
 
-logic mscratch_wen;
+logic mscratch_we;
 logic [31:0] mscratch_d, mscratch_q;
 
 // MSCRATCH: Machine Scratch Register
@@ -240,33 +242,33 @@ csr #(.Width(32), .ResetValue('0)) csr_mscratch
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mscratch_wen),
+    .wr_en_i(mscratch_we),
     .wr_data_i(mscratch_d),
     .rd_data_o(mscratch_q)
 );
 
 logic [31:0] mepc_d, mepc_q;
-logic mepc_wen;
+logic mepc_we;
 
 // MEPC: Machine Exception Program Counter
 csr #(.Width(32), .ResetValue('0)) csr_mepc
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mepc_wen),
+    .wr_en_i(mepc_we),
     .wr_data_i(mepc_d),
     .rd_data_o(mepc_q)
 );
 
 mcause_t mcause_d, mcause_q;
-logic mcause_wen;
+logic mcause_we;
 
 // MCAUSE: Machine Cause Register
 csr #(.Width($bits(mcause_t)), .ResetValue('0)) csr_mcause
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mcause_wen),
+    .wr_en_i(mcause_we),
     .wr_data_i(mcause_d),
     .rd_data_o(mcause_q)
 );
@@ -347,28 +349,28 @@ always_comb begin: csr_write
 
     current_plvl_d = current_plvl_q;
 
-    mscratch_wen = 1'b0;
+    mscratch_we = 1'b0;
     mscratch_d = csr_wdata_i;
 
-    mstatus_wen = 1'b0;
+    mstatus_we = 1'b0;
     mstatus_d = mstatus_q;
 
-    mtvec_wen = 1'b0;
+    mtvec_we = 1'b0;
     mtvec_d = mtvec_q;
 
     mtval_wen = 1'b0;
     mtval_d = mtval_q;
 
-    mie_wen = 1'b0;
+    mie_we = 1'b0;
     mie_d = mie_q;
 
-    mepc_wen = 1'b0;
+    mepc_we = 1'b0;
     mepc_d = mepc_q;
 
-    mcause_wen = 1'b0;
+    mcause_we = 1'b0;
     mcause_d = mcause_q;
 
-    mcountinhibit_wen = 1'b0;
+    mcountinhibit_we = 1'b0;
     mcountinhibit_d = mcountinhibit_q;
 
     mhpmcounter_we = '0;
@@ -378,10 +380,10 @@ always_comb begin: csr_write
     if (csr_we_i)
     begin
         unique case (csr_waddr)
-            CSR_MSCRATCH: mscratch_wen = 1'b1;
+            CSR_MSCRATCH: mscratch_we = 1'b1;
             CSR_MSTATUS:
             begin
-                mstatus_wen = 1'b1;
+                mstatus_we = 1'b1;
                 mstatus_d = '{
                     mie: csr_wdata_i[CSR_MSTATUS_MIE_BIT],
                     mpie: csr_wdata_i[CSR_MSTATUS_MPIE_BIT],
@@ -393,7 +395,7 @@ always_comb begin: csr_write
             end
             CSR_MTVEC:
             begin
-                mtvec_wen = 1'b1;
+                mtvec_we = 1'b1;
                 mtvec_d = mtvec_t'(csr_wdata_i);
             end
             CSR_MTVAL:
@@ -403,7 +405,7 @@ always_comb begin: csr_write
             end
             CSR_MIE:
             begin
-                mie_wen = 1'b1;
+                mie_we = 1'b1;
                 mie_d = '{
                     m_software: csr_wdata_i[CSR_MSI_BIT],
                     m_timer: csr_wdata_i[CSR_MTI_BIT],
@@ -412,12 +414,12 @@ always_comb begin: csr_write
             end
             CSR_MEPC:
             begin
-                mepc_wen = 1'b1;
+                mepc_we = 1'b1;
                 mepc_d = {csr_wdata_i[31:2], 2'b00}; // IALIGN=32
             end
             CSR_MCAUSE:
             begin
-                mcause_wen = 1'b1;
+                mcause_we = 1'b1;
                 mcause_d = '{
                     irq: csr_wdata_i[CSR_MCAUSE_IRQ_BIT],
                     trap_code: csr_wdata_i[CSR_MCAUSE_CODE_BIT_HIGH:CSR_MCAUSE_CODE_BIT_LOW]
@@ -427,7 +429,7 @@ always_comb begin: csr_write
             end
             CSR_MCOUNTINHIBIT:
             begin
-                mcountinhibit_wen = 1'b1;
+                mcountinhibit_we = 1'b1;
                 mcountinhibit_d = {29'd0, csr_wdata_i[2], 1'b0, csr_wdata_i[0]};
             end
             
@@ -446,11 +448,11 @@ always_comb begin: csr_write
     end
 
     unique case (1'b1)
-        csr_mret_i:
+        mret_i:
         begin
             current_plvl_d = mstatus_q.mpp;
 
-            mstatus_wen = 1'b1;
+            mstatus_we = 1'b1;
             mstatus_d.mie = mstatus_q.mpie;
 
             if (mstatus_q.mpp != PRIV_LVL_M)
@@ -465,7 +467,7 @@ always_comb begin: csr_write
             current_plvl_d = PRIV_LVL_M;
 
             // save the current privilege mode inside mpp
-            mstatus_wen = 1'b1;
+            mstatus_we = 1'b1;
             mstatus_d.mpp = current_plvl_q;
             // the interrutps are now globally disabled
             mstatus_d.mie = 1'b0;
@@ -473,16 +475,16 @@ always_comb begin: csr_write
             mstatus_d.mpie = mstatus_q.mie;
 
             // update mcause
-            mcause_wen = 1'b1;
-            mcause_d = mcause_i;
+            mcause_we = 1'b1;
+            mcause_d = trap_mcause_i;
 
             // update mepc
-            mepc_wen = 1'b1;
-            mepc_d = exc_pc_i;
+            mepc_we = 1'b1;
+            mepc_d = trap_mepc_i;
 
             // TODO: it would be better if mtval would not always be set to zero
             mtval_wen = 1'b1;
-            mtval_d = '0;
+            mtval_d = trap_mtval_i;
         end
         default:;
     endcase

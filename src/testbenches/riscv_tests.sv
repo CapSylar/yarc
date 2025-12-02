@@ -58,7 +58,7 @@ core_top core_i
     .irq_external_i('0)
 );
 
-`define TRAP_LINE core_i.mem_wb_trap
+`define TRAP_LINE core_i.sys_instrM;
 `define REG_FILE core_i.reg_file_i.regf
 
 exc_t trap;

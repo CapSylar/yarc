@@ -41,7 +41,8 @@ import csr_pkg::*;
     input [31:0] mem_wb_alu_result_i,
     input [31:0] mem_wb_lsu_rdata_i,
     input mem_stall_needed_i,
-    input exc_t mem_trap_i,
+    input wire trapM_i,
+    input var exc_t sys_instrM_i,
 
     output logic [1:0] forward_rs1_o,
     output logic [1:0] forward_rs2_o,
@@ -66,9 +67,8 @@ import csr_pkg::*;
     output pc_sel_t pc_sel_o,
 
     // to cs registers
-    output logic csr_mret_o,
-    output mcause_t csr_mcause_o,
-    output logic is_trap_o,
+    output logic take_irqM_o,
+    // output logic is_trap_o,
     output logic [31:0] exc_pc_o, // this will be saved in mepc
 
     // flush/stall to ID/EX
@@ -173,25 +173,24 @@ assign interrupt_en = csr_mstatus_i.mie || current_plvl_i == PRIV_LVL_U;
 assign handle_irq = interrupt_en & |irq_pending_i;
 
 // determine the IRQ code with the highest priority
-logic [3:0] interrupt_code;
-always_comb
-begin
-    interrupt_code = '0;
-    unique case (1'b1)
-        irq_pending_i.m_software: interrupt_code = CSR_MSI_BIT;
-        irq_pending_i.m_timer: interrupt_code = CSR_MTI_BIT;
-        irq_pending_i.m_external: interrupt_code = CSR_MEI_BIT;
-        default:;
-    endcase
-end
+// logic [3:0] interrupt_code;
+// always_comb
+// begin
+//     interrupt_code = '0;
+//     unique case (1'b1)
+//         irq_pending_i.m_software: interrupt_code = CSR_MSI_BIT;
+//         irq_pending_i.m_timer: interrupt_code = CSR_MTI_BIT;
+//         irq_pending_i.m_external: interrupt_code = CSR_MEI_BIT;
+//         default:;
+//     endcase
+// end
 
 // any instruction still in the pipeline ?
 wire pipeline_empty = !(id_ex_instr_valid_i ||
                         ex_mem_instr_valid_i ||
                         mem_wb_instr_valid_i);
 
-wire trap_happened = (mem_trap_i != NO_TRAP);
-logic take_irq, take_exception;
+logic take_irq;
 
 enum
 {
@@ -223,7 +222,7 @@ begin: core_sm
         time and need to restart the pipeline as if nothing happened */
 
         /* an in-flight instruction disabled interrupts or a trap happened */
-        if (!handle_irq || trap_happened)
+        if (!handle_irq || trapM_i)
             next = DECODE;
         else if (pipeline_empty)
         begin
@@ -236,60 +235,49 @@ end
 
 always_comb
 begin: if_steering
-    is_trap_o = '0;
     new_pc_en_o = '0;
     pc_sel_o = PC_JUMP;
-    csr_mret_o = '0;
 
     // for exceptions
     exc_pc_o = ex_mem_pc_i;
-    csr_mcause_o = '{
-        irq: 1'b0,
-        trap_code: mem_trap_i[3:0]
-    };
 
-    if (take_exception) begin
+    if (trapM_i) begin
         // MRET
-        if (mem_trap_i == MRET)
+        if (sys_instrM_i == MRET)
         begin
             new_pc_en_o = 1'b1;
             pc_sel_o = PC_MEPC;
-            csr_mret_o = 1'b1; // triggers needed changes in cs_registers
         end
         else // regular exception
         begin
             new_pc_en_o = 1'b1;
             pc_sel_o = PC_TRAP;
-            is_trap_o = 1'b1;
         end
     end else if (take_irq) begin
 
         pc_sel_o = PC_TRAP;
         new_pc_en_o = 1'b1;
-        is_trap_o = 1'b1;
 
         exc_pc_o = if_pc_i;
-        csr_mcause_o = '{
-            irq: 1'b1,
-            trap_code: interrupt_code
-        };
     end else if (ex_new_pc_en_i) begin // branch or jump taken
-    
+
         new_pc_en_o = 1'b1; 
     end else if (csr_writeM_i) begin
+
         // any CSR write causes a pipeline flush
         new_pc_en_o = 1'b1;
         pc_sel_o = PC_CSRW;
     end
 end
 
+assign take_irqM_o = take_irq;
+
 // if stage N needs to stall, then so does stage N-1 and so on
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
-assign take_exception = trap_happened;
 
 wire flush_causeD = csr_writeM_i;
-wire flush_causeE = trap_happened | ex_new_pc_en_i | csr_writeM_i;
-wire flush_causeM = trap_happened | csr_writeM_i;
+wire flush_causeE = trapM_i | ex_new_pc_en_i | csr_writeM_i;
+wire flush_causeM = trapM_i | csr_writeM_i;
 
 wire stall_causeD = ((state == IRQ_WAIT) | load_use_hzrd)& ~flush_causeD;
 wire stall_causeE = 1'b0; // can't stall in EX for now

@@ -22,8 +22,6 @@ import csr_pkg::*;
     // csr unit <-> decode module
     // read port
     output csr_re_o, // read enable
-    // output [11:0] csr_raddr_o,
-    // input [31:0] csr_rdata_i,
 
     // from IF stage
     input [31:0] instr_i, // instruction
@@ -60,9 +58,8 @@ import csr_pkg::*;
     // used by the hazard/forwarding logic
     output logic [4:0] rs1_addr_o,
     output logic [4:0] rs2_addr_o,
-    // output logic id_is_csr_o, // driven combinationally
 
-    output exc_t trap_o
+    output exc_t sys_instrE_o
 );
 
 // extract the common fields from the instruction format
@@ -101,7 +98,7 @@ alu_oper2_src_t alu_oper2_src;
 bnj_oper_t bnj_oper;
 mem_oper_t mem_oper; // memory operation if any
 
-exc_t trap;
+exc_t sys_instrD;
 logic csr_re;
 logic csr_we;
 // logic is_csr;
@@ -119,7 +116,7 @@ begin : main_decode
     bnj_oper = BNJ_NO; // no branch
     mem_oper = MEM_NOP;
 
-    trap = NO_TRAP;
+    sys_instrD = NO_SYS;
     csr_re = '0;
     csr_we = '0;
     // is_csr = '0;
@@ -213,13 +210,13 @@ begin : main_decode
                 if (func3 == '0 && rd == '0) // ecall, ebreak or mret
                 begin
                     if (func7 == 7'b0011000) // mret
-                        trap = MRET;
+                        sys_instrD = MRET;
                     else
                     begin
                         if (instr_i[31:20] == 12'd1)
-                            trap = BRK_POINT;
+                            sys_instrD = BRK_POINT;
                         else
-                            trap = (current_plvl_i == PRIV_LVL_M) ? ECALL_MMODE : ECALL_UMODE;
+                            sys_instrD = (current_plvl_i == PRIV_LVL_M) ? ECALL_MMODE : ECALL_UMODE;
                     end
                 end
                 else  // CSR instruction
@@ -347,7 +344,7 @@ begin : id_ex_pip
         rs1_addr_o <= 0;
         rs2_addr_o <= 0;
 
-        trap_o <= NO_TRAP;
+        sys_instrE_o <= NO_SYS;
     end
     else if (!stall_i)
     begin
@@ -373,7 +370,7 @@ begin : id_ex_pip
         rs1_addr_o <= rs1;
         rs2_addr_o <= rs2;
 
-        trap_o <= trap;
+        sys_instrE_o <= sys_instrD;
     end
 end
 

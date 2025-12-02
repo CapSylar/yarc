@@ -36,7 +36,7 @@ import riscv_pkg::*;
     input wire instr_valid_i,
     // input wire is_csr_i,
     input wire csr_we_i,
-    input wire exc_t trap_i,
+    input wire trapM_i,
 
     // for WB stage exclusively
     input wire write_rd_i,
@@ -52,11 +52,11 @@ import riscv_pkg::*;
     output mem_oper_t mem_oper_o,
 
     output logic lsu_stall_m_o,
+    output logic load_misaligned_trapM_o,
+    output logic store_misaligned_trapM_o,
     
     input wire stall_i,
-    input wire flush_i,
-
-    output exc_t trap_o
+    input wire flush_i
 );
 
 // TODO: handle unaligned loads and stores, signal an error in this case
@@ -65,6 +65,14 @@ wire [31:0] to_write = alu_oper2_i;
 logic [3:0] wsel_byte;
 logic [31:0] wdata;
 logic is_write;
+
+// detected unaligned addresses
+wire is_half_unaligned = (mem_oper_i[1:0] == 2'b01) & (addr[0] == 1'b1);
+wire is_word_unaligned = (mem_oper_i[1:0] == 2'b10) & (|addr[1:0]);
+
+wire misaligned_trap = is_half_unaligned | is_word_unaligned;
+assign load_misaligned_trapM_o = misaligned_trap & ~mem_oper_i[3];
+assign store_misaligned_trapM_o = misaligned_trap & mem_oper_i[3];
 
 // format the write data
 always_comb
@@ -152,7 +160,7 @@ end
 // so we must determine if a memory instruction currently in EX will be in MEM in the next cycle
 
 // when not to start a memory request
-wire cannot_issue_req = (trap_i != NO_TRAP) | flush_i ; // | stall_i;
+wire cannot_issue_req = trapM_i | flush_i ; // | stall_i;
 
 typedef enum {IDLE, WAITING_FOR_DONE} state_t;
 state_t state, next;
@@ -191,7 +199,7 @@ assign lsu_wdata_o = wdata;
 assign lsu_wsel_byte_o = wsel_byte;
 assign lsu_we_o = is_write;
 
-wire no_csr_commit = stall_i | trap_i != NO_TRAP;
+wire no_csr_commit = stall_i | trapM_i != NO_SYS;
 
 // csrs
 // assign csr_we_o = csr_we_i & ~no_csr_commit;
@@ -212,9 +220,7 @@ flopenrc #(1) instr_valid_reg   (clk_i, rstn_i, flush_i, !stall_i, instr_valid_i
 // flopenrc #(12) csr_waddr_reg    (clk_i, rstn_i, flush_i, !stall_i, csr_waddr_i, csr_waddr_o);
 // flopenrc #(32) csr_wdata_reg    (clk_i, rstn_i, flush_i, !stall_i, csr_wdata_i, csr_wdata_o);
 
-// flopenrc_type #(exc_t, NO_TRAP) trap_reg             (clk_i, rstn_i, flush_i, !stall_i, trap_i, trap_o);
-
-assign trap_o = trap_i;
+// flopenrc_type #(exc_t, NO_SYS) trap_reg             (clk_i, rstn_i, flush_i, !stall_i, trapM_i, trap_o);
 
 endmodule: stage_mem1
 

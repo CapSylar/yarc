@@ -17,8 +17,6 @@ import riscv_pkg::*;
     input bnj_oper_t bnj_oper_i,
     input instr_valid_i,
     input mem_oper_t mem_oper_i,
-    // input [11:0] csr_waddr_i,
-    input exc_t trap_i,
     
     // forward to the WB stage
     input write_rd_i,
@@ -34,9 +32,6 @@ import riscv_pkg::*;
     output logic [31:0] alu_result_o, // always contains a mem address or the rd value
     output logic [31:0] alu_oper2_o,
     output mem_oper_t mem_oper_o,
-    // output logic [31:0] csr_wdata_o,
-    // output logic [11:0] csr_waddr_o,
-    output exc_t trap_o,
     output logic [31:0] pc_o,
     output logic instr_valid_o,
 
@@ -234,7 +229,6 @@ begin : ex_mem_pip
     if (!rstn_i || flush_i)
     begin
         mem_oper_o <= MEM_NOP;
-        trap_o <= NO_TRAP;
         instr_valid_o <= '0;
         write_rd_o <= 0;
     end
@@ -246,7 +240,6 @@ begin : ex_mem_pip
         alu_result_o <= alu_result;
         alu_oper2_o <= rs2ValueE;
         mem_oper_o <= mem_oper_i;
-        trap_o <= trap_i;
         pc_o <= pc_i;
         instr_valid_o <= instr_valid_i;
 

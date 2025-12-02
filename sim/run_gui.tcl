@@ -64,10 +64,7 @@ add wave ${CS_REGISTERS_PATH}/csr_mstatus_o;
 add wave ${CS_REGISTERS_PATH}/irq_pending_o;
 
 # ret, traps...
-add wave ${CS_REGISTERS_PATH}/csr_mret_i;
 add wave ${CS_REGISTERS_PATH}/is_trap_i;
-add wave ${CS_REGISTERS_PATH}/mcause_i;
-add wave ${CS_REGISTERS_PATH}/exc_pc_i;
 
 # interrupts
 add wave ${CS_REGISTERS_PATH}/irq_software_i;
@@ -77,33 +74,33 @@ add wave ${CS_REGISTERS_PATH}/irq_external_i;
 add wave ${CS_REGISTERS_PATH}/current_plvl_q;
 add wave ${CS_REGISTERS_PATH}/current_plvl_d;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_q;
 
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mip_d;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_q;
 
@@ -140,7 +137,6 @@ add wave -color Gold ${CORE}/decode_i/write_rd_o;
 add wave -color Gold ${CORE}/decode_i/rd_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs1_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs2_addr_o;
-add wave -color Turquoise ${CORE}/decode_i/trap_o;
 
 # ---------------------------------------------------------
 add wave -divider {EXECUTE}
@@ -152,13 +148,9 @@ add wave ${CORE}/execute_i/alu_oper1_src_i;
 add wave ${CORE}/execute_i/alu_oper2_src_i;
 add wave ${CORE}/execute_i/alu_oper_i;
 add wave ${CORE}/execute_i/bnj_oper_i;
-# add wave ${CORE}/execute_i/is_csr_i;
 add wave ${CORE}/execute_i/instr_valid_i;
 
 add wave ${CORE}/execute_i/mem_oper_i;
-# add wave ${CORE}/execute_i/csr_waddr_i;
-# add wave ${CORE}/execute_i/csr_we_i;
-add wave -color Turquoise ${CORE}/execute_i/trap_i;
 
 add wave ${CORE}/execute_i/write_rd_i;
 add wave ${CORE}/execute_i/rd_addr_i;
@@ -178,11 +170,6 @@ add wave -color Turquoise ${CORE}/execute_i/forward_mem_wb_data_i;
 add wave -color Gold ${CORE}/execute_i/alu_result_o;
 add wave -color Gold ${CORE}/execute_i/alu_oper2_o;
 add wave -color Gold ${CORE}/execute_i/mem_oper_o;
-# add wave -color Gold ${CORE}/execute_i/csr_wdata_o;
-# add wave -color Gold ${CORE}/execute_i/csr_waddr_o;
-# add wave -color Gold ${CORE}/execute_i/csr_we_o;
-# add wave -color Gold ${CORE}/execute_i/is_csr_o;
-add wave -color Turquoise ${CORE}/execute_i/trap_o;
 add wave -color Gold ${CORE}/execute_i/pc_o;
 add wave -color Gold ${CORE}/execute_i/instr_valid_o;
 
@@ -206,7 +193,6 @@ add wave ${CORE}/stage_mem1_i/lsu_req_stall_i;
 add wave ${CORE}/stage_mem1_i/alu_result_i;
 add wave ${CORE}/stage_mem1_i/alu_oper2_i;
 add wave ${CORE}/stage_mem1_i/mem_oper_i;
-add wave ${CORE}/stage_mem1_i/trap_i;
 add wave ${CORE}/stage_mem1_i/write_rd_i;
 add wave ${CORE}/stage_mem1_i/rd_addr_i;
 
@@ -227,39 +213,8 @@ add wave -color Gold ${CORE}/stage_mem1_i/write_rd_o;
 add wave -color Gold ${CORE}/stage_mem1_i/rd_addr_o;
 add wave -color Gold ${CORE}/stage_mem1_i/alu_result_o;
 add wave -color Gold ${CORE}/stage_mem1_i/mem_oper_o;
-add wave -color Turquoise ${CORE}/stage_mem1_i/trap_o;
 
 add wave ${CORE}/stage_mem1_i/*;
-
-# ---------------------------------------------------------
-# add wave -divider {MEM2}
-
-# add wave ${CORE}/stage_mem2_i/csr_we_o;
-# add wave ${CORE}/stage_mem2_i/csr_wdata_o;
-# add wave ${CORE}/stage_mem2_i/csr_waddr_o;
-
-# add wave ${CORE}/stage_mem2_i/alu_result_i;
-# add wave ${CORE}/stage_mem2_i/mem_oper_i;
-# add wave ${CORE}/stage_mem2_i/csr_wdata_i;
-# add wave ${CORE}/stage_mem2_i/csr_waddr_i;
-# add wave ${CORE}/stage_mem2_i/csr_we_i;
-
-# add wave ${CORE}/stage_mem2_i/trap_i;
-
-# add wave ${CORE}/stage_mem2_i/write_rd_i;
-# add wave ${CORE}/stage_mem2_i/rd_addr_i;
-
-# add wave ${CORE}/stage_mem2_i/lsu_req_done_i;
-# add wave ${CORE}/stage_mem2_i/lsu_rdata_i;
-
-# add wave ${CORE}/stage_mem2_i/stall_o;
-# add wave ${CORE}/stage_mem2_i/trap_o;
-
-# add wave -color Gold ${CORE}/stage_mem2_i/write_rd_o;
-# add wave -color Gold ${CORE}/stage_mem2_i/rd_addr_o;
-# add wave -color Gold ${CORE}/stage_mem2_i/alu_result_o;
-# add wave -color Gold ${CORE}/stage_mem2_i/lsu_rdata_o;
-# add wave -color Gold ${CORE}/stage_mem2_i/mem_oper_o;
 
 # ---------------------------------------------------------
 add wave -group {LSU WISHBONE} -color Gold ${CORE}/lsu_i/wb_if/*;
@@ -311,9 +266,6 @@ add wave ${CORE}/controller_i/next;
 
 add wave ${CORE}/controller_i/new_pc_en_o;
 add wave ${CORE}/controller_i/pc_sel_o;
-add wave ${CORE}/controller_i/csr_mret_o;
-add wave ${CORE}/controller_i/csr_mcause_o;
-add wave ${CORE}/controller_i/is_trap_o;
 add wave ${CORE}/controller_i/exc_pc_o;
 
 add wave ${CORE}/controller_i/*;

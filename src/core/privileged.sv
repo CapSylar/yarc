@@ -7,6 +7,9 @@ import csr_pkg::*;
     input wire clk_i,
     input wire rstn_i,
 
+    input wire stallE_i,
+    input wire flushE_i,
+
     input wire stallM_i,
 
     input wire csr_readM_i,
@@ -15,6 +18,7 @@ import csr_pkg::*;
     output wire [31:0] csr_rdataM_o,
 
     input wire [31:0] instructionM_i,
+    input wire [31:0] lsu_addrM_i,
 
     // output some cs registers
     output logic [31:0] csr_mepc_o,
@@ -24,19 +28,31 @@ import csr_pkg::*;
 
     output irqs_t irq_pending_o,
 
+    // trap inputs
+    input var exc_t sys_instrM_i,
+    input wire load_misaligned_trapM_i,
+    input wire store_misaligned_trapM_i,
+    input wire take_irq_i,
+
     // mret, traps...
     input wire csr_mret_i,
-    input wire is_trap_i,
     input var mcause_t mcause_i,
     input wire [31:0] exc_pc_i,
     // interrupts
     input wire irq_software_i,
     input wire irq_timer_i,
     input wire irq_external_i,
+    input var irqs_t irq_pending_i,
 
     // used by the performance counters
-    input wire instr_ret_i
+    input wire instr_ret_i,
+
+    output logic trapM_o
 );
+
+/*
+ * CSR instruction decoding and read and write values generation
+ */
 
 logic [11:0] csr_addressM;
 // continue decoding the csr instruction
@@ -59,8 +75,65 @@ always_comb begin
 end
 
 assign csr_addressM = instructionM_i[31:20];
-
 wire csr_write_gatedM = csr_writeM_i & ~stallM_i;
+
+/*
+ * generate the trap signal
+ */
+
+wire trapM = (sys_instrM_i != NO_SYS) | load_misaligned_trapM_i | store_misaligned_trapM_i | take_irq_i;
+
+// determine the IRQ code with the highest priority
+logic [3:0] interrupt_code;
+always_comb
+begin
+    interrupt_code = '0;
+    unique case (1'b1)
+        irq_pending_i.m_software: interrupt_code = CSR_MSI_BIT;
+        irq_pending_i.m_timer: interrupt_code = CSR_MTI_BIT;
+        irq_pending_i.m_external: interrupt_code = CSR_MEI_BIT;
+        default:;
+    endcase
+end
+
+/*
+ * determine mcause
+ */
+mcause_t next_mcause;
+
+always_comb begin
+
+    next_mcause = '{
+        irq: 1'b0,
+        trap_code: sys_instrM_i[3:0]
+    };
+
+    if (load_misaligned_trapM_i) begin
+        next_mcause.irq = 1'b0;
+        next_mcause.trap_code = 4'd4; // load address misaligned
+    end else if (store_misaligned_trapM_i) begin
+        next_mcause.irq = 1'b0;
+        next_mcause.trap_code = 4'd6; // store/AMO address misaligned
+    end else if (take_irq_i) begin
+        next_mcause.irq = 1'b1;
+        next_mcause.trap_code = interrupt_code;
+    end
+end
+
+/*
+* determine mtval
+*/
+
+logic [31:0] next_mtval;
+
+always_comb begin
+
+    next_mtval = '0;
+
+    if (load_misaligned_trapM_i | store_misaligned_trapM_i) begin
+        next_mtval = lsu_addrM_i; // faulting address
+    end
+end
 
 // CS Register file
 cs_registers cs_registers_i
@@ -86,20 +159,26 @@ cs_registers cs_registers_i
 
     .irq_pending_o(irq_pending_o),
 
+    // write ports used for traps
+
     // mret, traps...
-    .csr_mret_i(csr_mret_i),
-    .is_trap_i(is_trap_i),
-    .mcause_i(mcause_i),
-    .exc_pc_i(exc_pc_i),
+    .mret_i(csr_mret_i),
+    .is_trap_i(trapM),
+
+   .trap_mcause_i(next_mcause),
+   .trap_mepc_i(exc_pc_i),
+   .trap_mtval_i(next_mtval),
+
     // interrupts
     .irq_software_i('0),
     .irq_timer_i(irq_timer_i),
     .irq_external_i(irq_external_i),
 
     // used by the performance counters
-    // .instr_ret_i(mem_wb_instr_valid && !mem_wb_stall)
     .instr_ret_i(1'b0)
 );
+
+assign trapM_o = trapM;
 
 endmodule
 
