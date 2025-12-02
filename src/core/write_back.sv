@@ -14,6 +14,8 @@ import riscv_pkg::*;
     input [31:0] lsu_rdata_i,
     input [31:0] csr_rdata_i,
 
+    output [31:0] rdValueW_o,
+
     // WB -> Register file
     output logic regf_write_o,
     output logic [4:0] regf_waddr_o,
@@ -29,7 +31,9 @@ mux3 #(32) wb_data_mux (
     lsu_rdata_i,
     csr_rdata_i,
     result_srcW_i,
-    regf_wdata_o
+    rdValueW_o
 );
+
+assign regf_wdata_o = rdValueW_o;
 
 endmodule: write_back

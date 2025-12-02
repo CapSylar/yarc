@@ -37,9 +37,7 @@ import csr_pkg::*;
     // from MEM/WB
     input [4:0] rdW_i,
     input mem_wb_write_rd_i,
-    input mem_oper_t mem_wb_mem_oper_i,
-    input [31:0] mem_wb_alu_result_i,
-    input [31:0] mem_wb_lsu_rdata_i,
+    input [31:0] rdvalueW_i,
     input mem_stall_needed_i,
     input wire trapM_i,
     input var exc_t sys_instrM_i,
@@ -139,10 +137,7 @@ assign forward_ex_mem_data_o = ex_mem_alu_result_i; // through here just for cle
 // 1- if the MEM stage loaded a value, we need this value to be forwarded not the alu result
 // the alu result has been used as the address to load from in this case
 // 2- if the MEM stage hasn't loaded, forward the alu result
-// assign forward_mem2_wb_data_o = is_mem_oper_load(mem_wb_mem_oper_i) ? mem_wb_lsu_rdata_i : mem_wb_alu_result_i;
-// data to be forwarded from MEM1/MEM2
-assign forward_mem_wb_data_o = is_mem_oper_load(mem_wb_mem_oper_i) ? mem_wb_lsu_rdata_i
-                                : mem_wb_alu_result_i; // through here just for cleanliness
+assign forward_mem_wb_data_o = rdvalueW_i;
 
 // TODO: come on this doesn't belong here
 logic csr_readE;

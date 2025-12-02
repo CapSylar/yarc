@@ -86,7 +86,6 @@ logic ex_new_pc_en;
 logic [31:0] ex_mem1_pc;
 logic ex_mem_instr_valid;
 logic trapM;
-// logic [31:0] rs1ValueE;
 
 // Driven by the Mem stage
 logic lsu_req;
@@ -107,9 +106,7 @@ logic [31:0] mem_wb_alu_result;
 logic [31:0] mem_wb_lsu_rdata;
 logic mem_stall_needed;
 mem_oper_t mem_wb_mem_oper;
-// logic [31:0] csr_wdata;
-// logic [11:0] csr_waddr;
-// logic csr_we;
+logic [31:0] rdValueW;
 exc_t mem_trap;
 
 // Driven by the WB Data Interface
@@ -131,8 +128,8 @@ logic flushE;
 logic stallE;
 logic ex_mem_flush;
 logic ex_mem_stall;
-logic mem_wb_stall;
-logic mem_wb_flush;
+logic stallW;
+logic flushW;
 logic new_pc_en;
 pc_sel_t pc_sel;
 logic is_mret;
@@ -201,6 +198,9 @@ datapath datapath_i (
     .stallM_i(ex_mem_stall),
     .flushM_i(ex_mem_flush),
 
+    .stallW_i(stallW),
+    .flushW_i(flushW),
+
     .instrD_i(instrD),
     .sys_instrE_i(sys_instrE),
     .instrE_o(instrE),
@@ -258,7 +258,7 @@ privileged privileged_i
     .irq_pending_i(irq_pending),
 
     // used by the performance counters
-    .instr_ret_i(mem_wb_instr_valid && !mem_wb_stall),
+    .instr_ret_i(mem_wb_instr_valid && !stallW),
 
     .trapM_o(trapM)
 );
@@ -427,8 +427,8 @@ stage_mem1 stage_mem1_i
     .load_misaligned_trapM_o(load_misaligned_trapM),
     .store_misaligned_trapM_o(store_misaligned_trapM),
 
-    .stall_i(mem_wb_stall),
-    .flush_i(mem_wb_flush)
+    .stall_i(stallW),
+    .flush_i(flushW)
 );
 
 // Load Store Unit
@@ -465,6 +465,8 @@ write_back write_back_i
     .alu_result_i(mem_wb_alu_result),
     .lsu_rdata_i(mem_wb_lsu_rdata),
     .csr_rdata_i(csr_rdataW),
+
+    .rdValueW_o(rdValueW),
 
     // WB -> Register file
     .regf_write_o(regf_write),
@@ -507,9 +509,7 @@ controller controller_i
     // from MEM/WB
     .rdW_i(mem_wb_rd_addr),
     .mem_wb_write_rd_i(mem_wb_write_rd),
-    .mem_wb_mem_oper_i(mem_wb_mem_oper),
-    .mem_wb_alu_result_i(mem_wb_alu_result),
-    .mem_wb_lsu_rdata_i(mem_wb_lsu_rdata),
+    .rdvalueW_i(rdValueW),
     .mem_stall_needed_i(mem_stall_needed),
     .trapM_i(trapM),
     .sys_instrM_i(sys_instrM),
@@ -553,8 +553,8 @@ controller controller_i
     .ex_mem_flush_o(ex_mem_flush),
 
     // flush/stall to MEM2/WB
-    .mem_wb_stall_o(mem_wb_stall),
-    .mem_wb_flush_o(mem_wb_flush)
+    .mem_wb_stall_o(stallW),
+    .mem_wb_flush_o(flushW)
 );
 
 endmodule : core_top
