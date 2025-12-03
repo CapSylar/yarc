@@ -1,6 +1,6 @@
 # Yarc
 
-Yet Another RiscV Core, implements RV32I with support for additional extensions planned.
+Yet Another RiscV Core, implements RV32I
 
 ## Yarc Platform Architecture
 
@@ -8,7 +8,7 @@ Yet Another RiscV Core, implements RV32I with support for additional extensions 
 
 ## Core Microarchitecture
 
-The core follows the standard 5-stage pipelined model but the M(memory) stage was split into two stages M1 and M2. This accomodates the common case where the memory subsystem takes a single clock cycle to read or write.
+The core follows the standard 5-stage pipelined model.
 
 ## Memory Subsystem
 
@@ -22,7 +22,17 @@ The core follows the standard 5-stage pipelined model but the M(memory) stage wa
 
 - [X] Zicsr
 - [ ] M(multiplication/division)
+- [ ] Atomics
 - [ ] Debug Module
+- [ ] MMU
+
+## Milestones on the way to Boot Linux
+
+- [X] rv32ui tests ok
+- [ ] rv32mi tests ok
+- [ ] Implement M extension
+- [ ] Add atomics
+- [ ] Attempt to boot OpenSBI
 
 ## FPGA Synthesis
 
