@@ -1,4 +1,6 @@
 .vscode/
+.dvt/
+dvt_build.log
 sim/qrun.log
 sim/logs
 sim/obj_dir

@@ -10,6 +10,7 @@ ifeq ($(MODE),app)
 	DMEMFILE := ""
 	DEFINES := -GIMEMFILE=\"$(IMEMFILE)\" -GDMEMFILE=\"$(DMEMFILE)\" -GINIT_DDR3_MEMORY=$(INIT_DDR3_MEMORY) \
 		-GDDR3_MEMFILE=\"$(DDR3_MEMFILE)\"
+	DO_FILE := run_gui.tcl
 
 else ifeq ($(MODE),compliance)
 
@@ -21,6 +22,7 @@ else ifeq ($(MODE),compliance)
 	sig_filename_o ?= ""
 
 	DEFINES := +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\"
+	DO_FILE := run_gui_compliance.tcl
 else
 	$(error MODE $(MODE) not supported. Supported modes are app and compliance)
 endif
@@ -74,11 +76,9 @@ run_sim:
 # QUESTASIM ARGUMENTS
 LIB_NAME ?= work
 # TOP_PARAMS += +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\"
-DO_FILE := ""
 
 ifeq ($(IS_GUI), 1)
 	TOP_PARAMS += -gui=interactive 
-	DO_FILE := run_gui.tcl
 else
 	DO_FILE := run.tcl
 endif
