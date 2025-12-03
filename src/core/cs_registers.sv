@@ -295,6 +295,11 @@ always_comb begin: csr_read
     if (csr_re_i)
     begin
         unique case (csr_raddr)
+            CSR_MISA: csr_rdata = misa_q;
+            CSR_MVENDORID: csr_rdata = mvendorid_q;
+            CSR_MHARTID: csr_rdata = MHART_ID;
+            CSR_MIMPID: csr_rdata = mimpid_q;
+
             CSR_MSCRATCH: csr_rdata = mscratch_q;
             CSR_MSTATUS:
             begin
@@ -337,8 +342,6 @@ always_comb begin: csr_read
             begin
                 csr_rdata = mhpmcounter[mhpmcounter_ridx][63:32];
             end
-            CSR_MHARTID:
-                csr_rdata = MHART_ID;
             default:;
         endcase
     end
