@@ -8,12 +8,6 @@ import riscv_pkg::*;
     input wire clk_i,
     input wire rstn_i,
 
-    // <-> CS Register File
-    // write port
-    // output logic [31:0] csr_wdata_o,
-    // output logic [11:0] csr_waddr_o,
-    // output logic csr_we_o,
-
     // Load Store Unit
     output logic lsu_req_o,
     // read port
@@ -22,7 +16,6 @@ import riscv_pkg::*;
     // write port
     output logic [3:0] lsu_wsel_byte_o,
     output logic [31:0] lsu_wdata_o,
-    input wire lsu_req_stall_i,
 
     input wire [31:0] lsu_rdata_i,
     input wire lsu_req_done_i,
@@ -31,11 +24,7 @@ import riscv_pkg::*;
     input wire [31:0] alu_result_i,
     input wire [31:0] alu_oper2_i,
     input wire mem_oper_t mem_oper_i,
-    input wire [31:0] csr_wdata_i,
-    input wire [11:0] csr_waddr_i,
     input wire instr_valid_i,
-    // input wire is_csr_i,
-    input wire csr_we_i,
     input wire trapM_i,
 
     // for WB stage exclusively
@@ -49,7 +38,7 @@ import riscv_pkg::*;
     output logic [4:0] rd_addr_o,
     output logic [31:0] alu_result_o,
     output logic [31:0] lsu_rdata_o,
-    output mem_oper_t mem_oper_o,
+    // output mem_oper_t mem_oper_o,
 
     output logic lsu_stall_m_o,
     output logic load_misaligned_trapM_o,
@@ -59,7 +48,6 @@ import riscv_pkg::*;
     input wire flush_i
 );
 
-// TODO: handle unaligned loads and stores, signal an error in this case
 wire [31:0] addr = lsu_addr_o;
 wire [31:0] to_write = alu_oper2_i;
 logic [3:0] wsel_byte;
@@ -199,28 +187,15 @@ assign lsu_wdata_o = wdata;
 assign lsu_wsel_byte_o = wsel_byte;
 assign lsu_we_o = is_write;
 
-wire no_csr_commit = stall_i | trapM_i != NO_SYS;
-
-// csrs
-// assign csr_we_o = csr_we_i & ~no_csr_commit;
-// assign csr_wdata_o = csr_wdata_i;
-// assign csr_waddr_o = csr_waddr_i;
-
 // pipeline registers
 flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flush_i, !stall_i, write_rd_i, write_rd_o);
 // flopenrc #(1) is_csr_reg        (clk_i, rstn_i, flush_i, !stall_i, is_csr_i, is_csr_o);
 flopenrc #(32) alu_result_reg   (clk_i, rstn_i, flush_i, !stall_i, alu_result_i, alu_result_o);
 flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flush_i, !stall_i, rdata, lsu_rdata_o);
-flopenrc_type #(mem_oper_t, MEM_NOP) mem_oper_reg     (clk_i, rstn_i, flush_i, !stall_i, mem_oper_i, mem_oper_o);
+// flopenrc_type #(mem_oper_t, MEM_NOP) mem_oper_reg     (clk_i, rstn_i, flush_i, !stall_i, mem_oper_i, mem_oper_o);
 
 flopenrc #(5) rd_addr_reg       (clk_i, rstn_i, flush_i, !stall_i, rd_addr_i, rd_addr_o);
 flopenrc #(1) instr_valid_reg   (clk_i, rstn_i, flush_i, !stall_i, instr_valid_i, instr_valid_o);
-
-// flopenrc #(1) csr_we_reg        (clk_i, rstn_i, flush_i, !stall_i, csr_we_i, csr_we_o);
-// flopenrc #(12) csr_waddr_reg    (clk_i, rstn_i, flush_i, !stall_i, csr_waddr_i, csr_waddr_o);
-// flopenrc #(32) csr_wdata_reg    (clk_i, rstn_i, flush_i, !stall_i, csr_wdata_i, csr_wdata_o);
-
-// flopenrc_type #(exc_t, NO_SYS) trap_reg             (clk_i, rstn_i, flush_i, !stall_i, trapM_i, trap_o);
 
 endmodule: stage_mem1
 

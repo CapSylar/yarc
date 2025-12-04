@@ -50,22 +50,20 @@ irqs_t irq_pending;
 // Driven by the Decode stage
 logic [4:0] rs1_addr, rs2_addr;
 logic csr_readD;
-// logic [11:0] csr_raddr;
 logic [31:0] pcE, id_ex_rs1_data, id_ex_rs2_data, id_ex_imm;
 alu_oper1_src_t id_ex_alu_oper1_src;
 alu_oper2_src_t id_ex_alu_oper2_src;
 bnj_oper_t id_ex_bnj_oper;
 logic id_ex_instr_valid;
+logic illegal_instrD;
 alu_oper_t id_ex_alu_oper;
 mem_oper_t id_ex_mem_oper;
-// logic [11:0] id_ex_csr_waddr;
 logic csr_writeE;
 logic id_ex_write_rd;
 result_src_e result_srcE, result_srcW;
 logic [4:0] id_ex_rd_addr;
 logic [4:0] id_ex_rs1_addr;
 logic [4:0] id_ex_rs2_addr;
-logic id_is_csr;
 exc_t sys_instrE;
 exc_t sys_instrM;
 logic load_misaligned_trapM;
@@ -76,9 +74,6 @@ logic take_irqM;
 logic [31:0] alu_resultM;
 logic [31:0] ex_mem1_alu_oper2;
 mem_oper_t ex_mem1_mem_oper;
-logic [31:0] ex_mem1_csr_wdata;
-logic [11:0] ex_mem1_csr_waddr;
-logic ex_mem1_csr_we;
 logic ex_mem1_write_rd;
 logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
@@ -105,12 +100,7 @@ logic [4:0] mem_wb_rd_addr;
 logic [31:0] mem_wb_alu_result;
 logic [31:0] mem_wb_lsu_rdata;
 logic mem_stall_needed;
-mem_oper_t mem_wb_mem_oper;
 logic [31:0] rdValueW;
-exc_t mem_trap;
-
-// Driven by the WB Data Interface
-logic lsu_req_stall;
 
 // Driven by the Wb stage
 logic regf_write;
@@ -132,9 +122,9 @@ logic stallW;
 logic flushW;
 logic new_pc_en;
 pc_sel_t pc_sel;
-logic is_mret;
-mcause_t mcause;
-// logic is_trap;
+
+// FIXME: MRET most probably does not work properly
+logic is_mret = '0;
 logic [31:0] exc_pc;
 
 // Fetch Stage
@@ -156,7 +146,6 @@ wb_prefetch wb_prefetch_i
     // target addresses
     .branch_target_i(branch_target),
     .csr_mepc_i(csr_mepc),
-    .mcause_i(mcause),
     .mtvec_i(csr_mtvec),
     .pcE_i(pcE),
 
@@ -224,6 +213,7 @@ privileged privileged_i
     .flushE_i(flushE),
 
     .stallM_i(ex_mem_stall),
+    .flushM_i(ex_mem_flush),
 
     .csr_readM_i(csr_readM),
     .csr_writeM_i(csr_writeM),
@@ -245,11 +235,11 @@ privileged privileged_i
     .sys_instrM_i(sys_instrM),
     .load_misaligned_trapM_i(load_misaligned_trapM),
     .store_misaligned_trapM_i(store_misaligned_trapM),
+    .illegal_instrD_i(illegal_instrD),
     .take_irq_i(take_irqM),
 
     // mret, traps...
     .csr_mret_i(is_mret),
-    .mcause_i(mcause),
     .exc_pc_i(exc_pc),
     // interrupts
     .irq_software_i('0),
@@ -299,12 +289,14 @@ decode decode_i
     .rs1_data_o(id_ex_rs1_data),
     .rs2_data_o(id_ex_rs2_data),
     .imm_o(id_ex_imm),
-    // .csr_rdata_o(id_ex_csr_rdata),
     .alu_oper1_src_o(id_ex_alu_oper1_src),
     .alu_oper2_src_o(id_ex_alu_oper2_src),
     .bnj_oper_o(id_ex_bnj_oper),
     .alu_oper_o(id_ex_alu_oper),
     .instr_valid_o(id_ex_instr_valid),
+
+    // traps genererated by this block
+    .illegal_instrD_o(illegal_instrD),
 
     // for the MEM stage
     .mem_oper_o(id_ex_mem_oper),
@@ -381,10 +373,6 @@ stage_mem1 stage_mem1_i
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
-    // .csr_wdata_o(csr_wdata),
-    // .csr_waddr_o(csr_waddr),
-    // .csr_we_o(csr_we),
-
     // MEM1 <-> LSU
     // read port
     .lsu_req_o(lsu_req),
@@ -393,7 +381,6 @@ stage_mem1 stage_mem1_i
     // write port
     .lsu_wsel_byte_o(lsu_wsel_byte),
     .lsu_wdata_o(lsu_wdata),
-    .lsu_req_stall_i(lsu_req_stall),
     .lsu_req_done_i(lsu_req_done),
     .lsu_rdata_i(lsu_rdata),
 
@@ -402,12 +389,7 @@ stage_mem1 stage_mem1_i
     .alu_oper2_i(ex_mem1_alu_oper2),
     .mem_oper_i(ex_mem1_mem_oper),
 
-    .csr_wdata_i(ex_mem1_csr_wdata),
-    .csr_waddr_i(ex_mem1_csr_waddr),
     .instr_valid_i(ex_mem_instr_valid),
-    // .is_csr_i(ex_mem_is_csr),
-    .csr_we_i(ex_mem1_csr_we),
-
     .trapM_i(trapM),
 
     // for WB stage exclusively
@@ -416,11 +398,9 @@ stage_mem1 stage_mem1_i
 
     // MEM/WB pipeline registers
     .instr_valid_o(mem_wb_instr_valid),
-    // .is_csr_o(mem_wb_is_csr),
     .write_rd_o(mem_wb_write_rd),
     .rd_addr_o(mem_wb_rd_addr),
     .alu_result_o(mem_wb_alu_result),
-    .mem_oper_o(mem_wb_mem_oper),
     .lsu_rdata_o(mem_wb_lsu_rdata),
 
     .lsu_stall_m_o(mem_stall_needed),
@@ -449,7 +429,7 @@ lsu lsu_i
 
     .req_done_o(lsu_req_done),
     .rdata_o(lsu_rdata),
-    .req_stall_o(lsu_req_stall)
+    .req_stall_o()
 );
 
 // Write-back Stage

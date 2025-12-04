@@ -33,7 +33,6 @@ import csr_pkg::*;
     input [31:0] branch_target_i,
     input [31:0] csr_mepc_i,
     input [31:0] pcE_i,
-    input var mcause_t mcause_i, // comes from the controller, not csr module
     input var mtvec_t mtvec_i
 );
 
@@ -88,7 +87,9 @@ begin
     exc_target_addr = '0;
     unique case (mtvec_i.mode)
         MTVEC_DIRECT: exc_target_addr = {mtvec_i.base, 2'b00};
-        MTVEC_VECTORED: exc_target_addr = {mtvec_i.base + 30'(mcause_i.trap_code), 2'b00};
+
+        // FIXME: doesn't work
+        MTVEC_VECTORED: exc_target_addr = {mtvec_i.base + 30'(1'b0), 2'b00};
         default:;
     endcase
 end

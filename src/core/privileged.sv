@@ -11,6 +11,7 @@ import csr_pkg::*;
     input wire flushE_i,
 
     input wire stallM_i,
+    input wire flushM_i,
 
     input wire csr_readM_i,
     input wire csr_writeM_i,
@@ -32,11 +33,11 @@ import csr_pkg::*;
     input var exc_t sys_instrM_i,
     input wire load_misaligned_trapM_i,
     input wire store_misaligned_trapM_i,
+    input wire illegal_instrD_i,
     input wire take_irq_i,
 
     // mret, traps...
     input wire csr_mret_i,
-    input var mcause_t mcause_i,
     input wire [31:0] exc_pc_i,
     // interrupts
     input wire irq_software_i,
@@ -77,11 +78,17 @@ end
 assign csr_addressM = instructionM_i[31:20];
 wire csr_write_gatedM = csr_writeM_i & ~stallM_i;
 
+logic illegal_instrE, illegal_instrM;
+
+// delay illegal instruction trap
+flopenrc #(1) illegal_instrE_pipe (clk_i, rstn_i, flushE_i, ~stallE_i, illegal_instrD_i, illegal_instrE);
+flopenrc #(1) illegal_instrM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, illegal_instrE, illegal_instrM);
+
 /*
  * generate the trap signal
  */
 
-wire trapM = (sys_instrM_i != NO_SYS) | load_misaligned_trapM_i | store_misaligned_trapM_i | take_irq_i;
+wire trapM = (sys_instrM_i != NO_SYS) | load_misaligned_trapM_i | store_misaligned_trapM_i | illegal_instrM | take_irq_i;
 
 // determine the IRQ code with the highest priority
 logic [3:0] interrupt_code;
@@ -108,12 +115,16 @@ always_comb begin
         trap_code: sys_instrM_i[3:0]
     };
 
+    // TODO: unacceptable code quality
     if (load_misaligned_trapM_i) begin
         next_mcause.irq = 1'b0;
         next_mcause.trap_code = 4'd4; // load address misaligned
     end else if (store_misaligned_trapM_i) begin
         next_mcause.irq = 1'b0;
         next_mcause.trap_code = 4'd6; // store/AMO address misaligned
+    end else if (illegal_instrM) begin
+        next_mcause.irq = 1'b0;
+        next_mcause.trap_code = 4'd2; // illegal instruction trap
     end else if (take_irq_i) begin
         next_mcause.irq = 1'b1;
         next_mcause.trap_code = interrupt_code;

@@ -9,34 +9,36 @@ success_token = "TEST OK"
 
 def run_tests(argv):
     dir = ""
-    isa = ""
+    isas = []
     dump = False
 
-    opts, _ = getopt.getopt(argv, "", ["dir=","isa=","dump"])
+    try:
+        opts, _ = getopt.getopt(argv, "", ["dir=","isa=","dump"])
+    except getopt.GetoptError:
+        print("Usage: run_riscv_tests.py --dir=<directory> --isa=<isa0> --isa=<isa1> [--dump]")
+        sys.exit(2)
 
     for flag, arg in opts:
         if flag in ("--dir"):
             dir = arg
         elif flag in ("--isa"):
-            isa = arg
+            isas.append(arg)
         elif flag in ("--dump"):
             dump = True
 
-    print(f"running with the following configs: dir={dir}, isa={isa}")
+    print(f"running with the following configs: dir={dir}, isa={isas}")
 
     testfiles = []
     # find all ELF files for the given ISA
-    for file in glob.glob(f"{dir}/{isa}-p-*"):
-        if re.search(".*dump.*", file) == None: # does no contain dump in the filename
-            testfiles.append(file)
+
+    for isa in isas:
+        for file in glob.glob(f"{dir}/{isa}-p-*"):
+            if re.search(".*dump.*", file) is None: # does no contain dump in the filename
+                testfiles.append(file)
     
     print(f"found {len(testfiles)} testfiles")
     
-    # make a temp directory
-    try:
-        os.mkdir("temp")
-    except OSError as error:
-        print(error)
+    os.makedirs("temp", exist_ok=True)
 
     failed_tests = 0
 
