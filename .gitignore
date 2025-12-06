@@ -5,6 +5,7 @@ sim/qrun.log
 sim/logs
 sim/obj_dir
 sim/work
+sim/temp
 sim/transcript
 sim/vsim.wlf
 sim/xilinx_libs_compiled/*

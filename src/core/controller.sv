@@ -273,13 +273,14 @@ assign take_irqM_o = take_irq;
 wire flush_causeD = csr_writeM_i;
 wire flush_causeE = trapM_i | ex_new_pc_en_i | csr_writeM_i;
 wire flush_causeM = trapM_i | csr_writeM_i;
+wire flush_causeW = trapM_i;
 
 wire stall_causeD = ((state == IRQ_WAIT) | load_use_hzrd)& ~flush_causeD;
 wire stall_causeE = 1'b0; // can't stall in EX for now
 wire stall_causeM = mem_stall_needed_i & ~flush_causeM;
 
 // this is done to preserve forwarding paths, stalling W when M is stalled incurrs no penalty
-wire stall_causeW = mem_stall_needed_i;
+wire stall_causeW = mem_stall_needed_i & ~flush_causeW;
 
 // remember, if N is stalled, so is N-1
 assign if_stall_o = stall_causeD | id_ex_stall_o; 
@@ -299,6 +300,6 @@ wire first_unstalledW = ~mem_wb_stall_o & ex_mem_stall_o;
 assign if_flush_o = flush_causeD;
 assign id_ex_flush_o = flush_causeE | first_unstalledE;
 assign ex_mem_flush_o = flush_causeM | first_unstalledM;
-assign mem_wb_flush_o = first_unstalledW;
+assign mem_wb_flush_o = flush_causeW | first_unstalledW;
 
 endmodule: controller

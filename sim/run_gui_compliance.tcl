@@ -17,7 +17,6 @@ add wave ${CORE}/wb_prefetch_i/new_pc_en_i;
 add wave ${CORE}/wb_prefetch_i/pc_sel_i;
 add wave ${CORE}/wb_prefetch_i/branch_target_i;
 add wave ${CORE}/wb_prefetch_i/csr_mepc_i;
-add wave ${CORE}/wb_prefetch_i/mcause_i;
 add wave ${CORE}/wb_prefetch_i/mtvec_i;
 
 add wave -group {FETCH WISHBONE} -color Gold ${CORE}/wb_prefetch_i/wb_if/*;
@@ -90,6 +89,10 @@ add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_d;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_q;
 
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mip_d;
+
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_wen;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_d;
+add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_q;
 
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_we;
 add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_d;
@@ -187,7 +190,6 @@ add wave ${CORE}/stage_mem1_i/lsu_we_o;
 add wave ${CORE}/stage_mem1_i/lsu_rdata_i;
 add wave ${CORE}/stage_mem1_i/lsu_wsel_byte_o;
 add wave ${CORE}/stage_mem1_i/lsu_wdata_o;
-add wave ${CORE}/stage_mem1_i/lsu_req_stall_i;
 
 add wave ${CORE}/stage_mem1_i/alu_result_i;
 add wave ${CORE}/stage_mem1_i/alu_oper2_i;
@@ -211,7 +213,6 @@ add wave -color Turquoise ${CORE}/stage_mem1_i/flush_i;
 add wave -color Gold ${CORE}/stage_mem1_i/write_rd_o;
 add wave -color Gold ${CORE}/stage_mem1_i/rd_addr_o;
 add wave -color Gold ${CORE}/stage_mem1_i/alu_result_o;
-add wave -color Gold ${CORE}/stage_mem1_i/mem_oper_o;
 
 add wave ${CORE}/stage_mem1_i/*;
 
