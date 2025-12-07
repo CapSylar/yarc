@@ -80,6 +80,18 @@ assign func3 = instr_i[14:12];
 assign func7 = instr_i[31:25];
 assign csr_addr = instr_i[31:20];
 
+wire is_func7_zero = (func7 == '0);
+wire is_func7_sub_sra = (func7 == 7'b0100_0000);
+
+wire is_r_type = ((func3 == 3'b101 | func3 == 3'b000) & is_func7_sub_sra) | is_func7_zero;
+
+wire is_imm_arith_no_shift = (func3 != 3'b101 & func3 != 3'b001);
+// arithmetic immediates and arithmetic immediate shifts use different formats
+wire is_imm_arith_shift = ((func3 == 3'b001) & is_func7_zero) |
+                         ((func3 == 3'b101) & (is_func7_zero | is_func7_sub_sra));
+
+wire is_imm_arith = is_imm_arith_no_shift | is_imm_arith_shift;
+
 // immediates
 logic [31:0] imm_i, imm_s, imm_b, imm_u, imm_j, imm_csr;
 
@@ -194,6 +206,10 @@ begin : main_decode
             ARITH:
             begin
                 write_rd = 1;
+
+                if (!is_r_type) begin
+                    illegal_instrD_o = 1'b1;
+                end
             end
 
             ARITH_IMM:
@@ -201,6 +217,10 @@ begin : main_decode
                 alu_oper2_src = OPER2_IMM;
                 curr_imm = imm_i;
                 write_rd = 1;
+
+                if (!is_imm_arith) begin
+                    illegal_instrD_o = 1'b1;
+                end
             end
 
             FENCE:
@@ -284,12 +304,6 @@ begin : alu_decode
 
         SYSTEM:
         begin
-            // if (system_opc_t'(func3) == CSRRW || system_opc_t'(func3) == CSRRWI)
-            //     alu_oper = ALU_ADD;
-            // else if (system_opc_t'(func3) == CSRRS || system_opc_t'(func3) == CSRRSI)
-            //     alu_oper = ALU_OR;
-            // else if (system_opc_t'(func3) == CSRRC || system_opc_t'(func3) == CSRRCI)
-            //     alu_oper = ALU_XOR;
         end
 
         default: // no need to handle anything here, already handled illegal opcodes above
