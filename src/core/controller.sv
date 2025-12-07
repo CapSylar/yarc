@@ -23,6 +23,7 @@ import csr_pkg::*;
     input [4:0] rdE_i,
     input id_ex_write_rd_i,
     input mem_oper_t id_ex_mem_oper_i,
+    input is_muldiv_instrE_i,
 
     // EX stage
     input ex_new_pc_en_i,
@@ -149,9 +150,10 @@ flopenrc #(1) execute_stage_pipe (clk_i, rstn_i, id_ex_flush_o, !id_ex_stall_o, 
 wire match_d_e = ((rs1D_i == rdE_i) | (rs2D_i == rdE_i)) & (rdE_i != 0);
 wire mem_load_use_hzrd = is_mem_oper_load(id_ex_mem_oper_i) & match_d_e;
 wire csr_load_use_hzrd = csr_readE & match_d_e;
+wire mul_div_use_hzrd = is_muldiv_instrE_i & match_d_e;
 
 // this is detected in the decode stage
-wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd;
+wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd;
 
 // For now, the cpu always predicts that the branch is not taken and continues
 // On a mispredict, flush the 2 instruction after the branch and continue from the new PC

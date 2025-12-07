@@ -55,6 +55,7 @@ alu_oper1_src_t id_ex_alu_oper1_src;
 alu_oper2_src_t id_ex_alu_oper2_src;
 bnj_oper_t id_ex_bnj_oper;
 logic id_ex_instr_valid;
+logic is_muldiv_instrE;
 logic illegal_instrD;
 alu_oper_t id_ex_alu_oper;
 mem_oper_t id_ex_mem_oper;
@@ -71,6 +72,8 @@ logic store_misaligned_trapM;
 logic take_irqM;
 
 // Driven by the Ex stage
+logic [31:0] rs1_forwarded_valueE;
+logic [31:0] rs2_forwarded_valueE;
 logic [31:0] alu_resultM;
 logic [31:0] ex_mem1_alu_oper2;
 mem_oper_t ex_mem1_mem_oper;
@@ -92,6 +95,7 @@ logic [3:0] lsu_wsel_byte;
 logic [31:0] lsu_wdata;
 logic [31:0] rs1ValueM;
 logic csr_writeM, csr_readM;
+logic [31:0] muldiv_resultW;
 
 // Driven by the WB stage
 logic mem_wb_write_rd;
@@ -295,6 +299,8 @@ decode decode_i
     .alu_oper_o(id_ex_alu_oper),
     .instr_valid_o(id_ex_instr_valid),
 
+    .is_muldiv_instrE_o(is_muldiv_instrE),
+
     // traps genererated by this block
     .illegal_instrD_o(illegal_instrD),
 
@@ -333,6 +339,9 @@ execute execute_i
     .instr_valid_i(id_ex_instr_valid),
     .mem_oper_i(id_ex_mem_oper),
 
+    .rs1_forwarded_value_o(rs1_forwarded_valueE),
+    .rs2_forwarded_value_o(rs2_forwarded_valueE),
+
     // forward to the WB stage
     .write_rd_i(id_ex_write_rd),
     .rd_addr_i(id_ex_rd_addr),
@@ -365,6 +374,26 @@ execute execute_i
 
     .forward_ex_mem_data_i(forward_ex_mem_data),
     .forward_mem_wb_data_i(forward_mem_wb_data)
+);
+
+// multiply divide unit
+mdu mdu_i
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+
+    .stallM_i(ex_mem_stall),
+    .flushM_i(ex_mem_flush),
+
+    .rs1_forwarded_value_i(rs1_forwarded_valueE),
+    .rs2_forwarded_value_i(rs2_forwarded_valueE),
+
+    .is_muldivE_i(is_muldiv_instrE),
+
+    .instrE_i(instrE),
+    .instrM_i(instrM),
+
+    .resultW_o(muldiv_resultW)
 );
 
 // MEM1 Stage (Setting up Memory request
@@ -445,6 +474,7 @@ write_back write_back_i
     .alu_result_i(mem_wb_alu_result),
     .lsu_rdata_i(mem_wb_lsu_rdata),
     .csr_rdata_i(csr_rdataW),
+    .muldiv_resultW_i(muldiv_resultW),
 
     .rdValueW_o(rdValueW),
 
@@ -475,6 +505,7 @@ controller controller_i
     .rdE_i(id_ex_rd_addr),
     .id_ex_write_rd_i(id_ex_write_rd),
     .id_ex_mem_oper_i(id_ex_mem_oper),
+    .is_muldiv_instrE_i(is_muldiv_instrE),
 
     // from EX stage
     .ex_new_pc_en_i(ex_new_pc_en),

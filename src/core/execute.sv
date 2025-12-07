@@ -17,6 +17,9 @@ import riscv_pkg::*;
     input bnj_oper_t bnj_oper_i,
     input instr_valid_i,
     input mem_oper_t mem_oper_i,
+
+    output logic [31:0] rs1_forwarded_value_o,
+    output logic [31:0] rs2_forwarded_value_o,
     
     // forward to the WB stage
     input write_rd_i,
@@ -249,5 +252,7 @@ begin : ex_mem_pip
 end
 
 assign new_pc_en_o = new_pc_en & ~(flush_i | stall_i);
+assign rs1_forwarded_value_o = rs1ValueE;
+assign rs2_forwarded_value_o = rs2ValueE;
 
 endmodule: execute

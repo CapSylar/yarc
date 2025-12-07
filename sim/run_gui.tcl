@@ -138,6 +138,8 @@ add wave -color Gold ${CORE}/decode_i/rd_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs1_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs2_addr_o;
 
+add wave -group {DECODE} ${CORE}/decode_i/*;
+
 # ---------------------------------------------------------
 add wave -divider {EXECUTE}
 add wave ${CORE}/execute_i/pc_i;
@@ -180,6 +182,11 @@ add wave ${CORE}/execute_i/operand1;
 add wave ${CORE}/execute_i/operand2;
 
 add wave -group {ALL EXECUTE} ${CORE}/execute_i/*;
+
+# ---------------------------------------------------------
+add wave -group {MDU} ${CORE}/mdu_i/*;
+add wave -group {MDU} ${CORE}/mdu_i/multiplier_i/*;
+
 # ---------------------------------------------------------
 add wave -divider {MEM}
 add wave ${CORE}/stage_mem1_i/lsu_req_o;

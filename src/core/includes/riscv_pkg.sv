@@ -163,7 +163,8 @@ typedef enum logic [1:0]
 {
     RESULT_ALU,
     RESULT_MEM,
-    RESULT_CSR
+    RESULT_CSR,
+    RESULT_MDU
 } result_src_e;
 
 endpackage: riscv_pkg

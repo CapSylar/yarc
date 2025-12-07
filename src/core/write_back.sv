@@ -13,6 +13,7 @@ import riscv_pkg::*;
     input [31:0] alu_result_i,
     input [31:0] lsu_rdata_i,
     input [31:0] csr_rdata_i,
+    input [31:0] muldiv_resultW_i,
 
     output [31:0] rdValueW_o,
 
@@ -26,10 +27,11 @@ import riscv_pkg::*;
 assign regf_write_o = write_rd_i;
 assign regf_waddr_o = rd_addr_i;
 
-mux3 #(32) wb_data_mux (
+mux4 #(32) wb_data_mux (
     alu_result_i,
     lsu_rdata_i,
     csr_rdata_i,
+    muldiv_resultW_i,
     result_srcW_i,
     rdValueW_o
 );
