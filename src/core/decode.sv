@@ -81,7 +81,7 @@ assign func7 = instr_i[31:25];
 assign csr_addr = instr_i[31:20];
 
 wire is_func7_zero = (func7 == '0);
-wire is_func7_sub_sra = (func7 == 7'b0100_0000);
+wire is_func7_sub_sra = (func7 == 7'b0100_000);
 
 wire is_r_type = ((func3 == 3'b101 | func3 == 3'b000) & is_func7_sub_sra) | is_func7_zero;
 
