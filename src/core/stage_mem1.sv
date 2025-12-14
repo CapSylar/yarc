@@ -144,11 +144,8 @@ begin : format_rdata
     endcase
 end
 
-// memory request to be issued in the current must be known 1 cycle in advance
-// so we must determine if a memory instruction currently in EX will be in MEM in the next cycle
-
 // when not to start a memory request
-wire cannot_issue_req = trapM_i | flush_i ; // | stall_i;
+wire cannot_issue_req = trapM_i | flush_i;
 
 typedef enum {IDLE, WAITING_FOR_DONE} state_t;
 state_t state, next;
@@ -189,10 +186,8 @@ assign lsu_we_o = is_write;
 
 // pipeline registers
 flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flush_i, !stall_i, write_rd_i, write_rd_o);
-// flopenrc #(1) is_csr_reg        (clk_i, rstn_i, flush_i, !stall_i, is_csr_i, is_csr_o);
 flopenrc #(32) alu_result_reg   (clk_i, rstn_i, flush_i, !stall_i, alu_result_i, alu_result_o);
 flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flush_i, !stall_i, rdata, lsu_rdata_o);
-// flopenrc_type #(mem_oper_t, MEM_NOP) mem_oper_reg     (clk_i, rstn_i, flush_i, !stall_i, mem_oper_i, mem_oper_o);
 
 flopenrc #(5) rd_addr_reg       (clk_i, rstn_i, flush_i, !stall_i, rd_addr_i, rd_addr_o);
 flopenrc #(1) instr_valid_reg   (clk_i, rstn_i, flush_i, !stall_i, instr_valid_i, instr_valid_o);

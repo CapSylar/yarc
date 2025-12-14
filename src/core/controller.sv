@@ -42,7 +42,7 @@ import csr_pkg::*;
     input [31:0] rdvalueW_i,
     input mem_stall_needed_i,
     input wire trapM_i,
-    input var exc_t sys_instrM_i,
+    input wire mretM_i,
 
     output logic [1:0] forward_rs1_o,
     output logic [1:0] forward_rs2_o,
@@ -72,20 +72,20 @@ import csr_pkg::*;
     output logic [31:0] exc_pc_o, // this will be saved in mepc
 
     // flush/stall to ID/EX
-    output logic id_ex_flush_o,
-    output logic id_ex_stall_o,
+    output logic flushE_o,
+    output logic stallE_o,
 
     // flush/stall to IF/EX
-    output logic if_stall_o,
-    output logic if_flush_o,
+    output logic stallD_o,
+    output logic flushD_o,
 
     // flush/stall to EX/MEM1
-    output logic ex_mem_stall_o,
-    output logic ex_mem_flush_o,
+    output logic stallM_o,
+    output logic flushM_o,
 
     // flush/stall to MEM2/WB
-    output logic mem_wb_stall_o,
-    output logic mem_wb_flush_o
+    output logic stallW_o,
+    output logic flushW_o
 );
 
 // forwarding to the EX stage happens when we are writing to a register that is sourced
@@ -143,7 +143,7 @@ assign forward_mem_wb_data_o = rdvalueW_i;
 
 // TODO: come on this doesn't belong here
 logic csr_readE;
-flopenrc #(1) execute_stage_pipe (clk_i, rstn_i, id_ex_flush_o, !id_ex_stall_o, csr_readD_i, csr_readE);
+flopenrc #(1) execute_stage_pipe (clk_i, rstn_i, flushE_o, !stallE_o, csr_readD_i, csr_readE);
 
 // Hazard Section
 
@@ -220,7 +220,7 @@ begin: core_sm
         time and need to restart the pipeline as if nothing happened */
 
         /* an in-flight instruction disabled interrupts or a trap happened */
-        if (!handle_irq || trapM_i)
+        if (!handle_irq || trapM_i || mretM_i)
             next = DECODE;
         else if (pipeline_empty)
         begin
@@ -240,17 +240,11 @@ begin: if_steering
     exc_pc_o = ex_mem_pc_i;
 
     if (trapM_i) begin
-        // MRET
-        if (sys_instrM_i == MRET)
-        begin
-            new_pc_en_o = 1'b1;
-            pc_sel_o = PC_MEPC;
-        end
-        else // regular exception
-        begin
-            new_pc_en_o = 1'b1;
-            pc_sel_o = PC_TRAP;
-        end
+        new_pc_en_o = 1'b1;
+        pc_sel_o = PC_TRAP;
+    end else if (mretM_i) begin
+        new_pc_en_o = 1'b1;
+        pc_sel_o = PC_MEPC;
     end else if (take_irq) begin
 
         pc_sel_o = PC_TRAP;
@@ -274,8 +268,8 @@ assign take_irqM_o = take_irq;
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
 
 wire flush_causeD = csr_writeM_i;
-wire flush_causeE = trapM_i | ex_new_pc_en_i | csr_writeM_i;
-wire flush_causeM = trapM_i | csr_writeM_i;
+wire flush_causeE = trapM_i | mretM_i | ex_new_pc_en_i | csr_writeM_i;
+wire flush_causeM = trapM_i | mretM_i | csr_writeM_i;
 wire flush_causeW = trapM_i;
 
 wire stall_causeD = ((state == IRQ_WAIT) | load_use_hzrd)& ~flush_causeD;
@@ -286,23 +280,23 @@ wire stall_causeM = mem_stall_needed_i & ~flush_causeM;
 wire stall_causeW = mem_stall_needed_i & ~flush_causeW;
 
 // remember, if N is stalled, so is N-1
-assign if_stall_o = stall_causeD | id_ex_stall_o; 
-assign id_ex_stall_o = stall_causeE | ex_mem_stall_o;
-assign ex_mem_stall_o = stall_causeM | mem_wb_stall_o;
-assign mem_wb_stall_o = stall_causeW;
+assign stallD_o = stall_causeD | stallE_o; 
+assign stallE_o = stall_causeE | stallM_o;
+assign stallM_o = stall_causeM | stallW_o;
+assign stallW_o = stall_causeW;
 
 // if a series of stages are stalled, then the first stage that is not stalled must be flushed
 // find the first stage that is not stalled
 
-wire first_unstalledE = ~id_ex_stall_o & if_stall_o;
-wire first_unstalledM = ~ex_mem_stall_o & id_ex_stall_o;
-wire first_unstalledW = ~mem_wb_stall_o & ex_mem_stall_o;
+wire first_unstalledE = ~stallE_o & stallD_o;
+wire first_unstalledM = ~stallM_o & stallE_o;
+wire first_unstalledW = ~stallW_o & stallM_o;
 
 // create the final flush lines
 
-assign if_flush_o = flush_causeD;
-assign id_ex_flush_o = flush_causeE | first_unstalledE;
-assign ex_mem_flush_o = flush_causeM | first_unstalledM;
-assign mem_wb_flush_o = flush_causeW | first_unstalledW;
+assign flushD_o = flush_causeD;
+assign flushE_o = flush_causeE | first_unstalledE;
+assign flushM_o = flush_causeM | first_unstalledM;
+assign flushW_o = flush_causeW | first_unstalledW;
 
 endmodule: controller

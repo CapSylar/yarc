@@ -83,7 +83,7 @@ logic [31:0] branch_target;
 logic ex_new_pc_en;
 logic [31:0] ex_mem1_pc;
 logic ex_mem_instr_valid;
-logic trapM;
+logic trapM, mretM;
 
 // Driven by the Mem stage
 logic lsu_req;
@@ -116,20 +116,18 @@ logic [1:0] forward_rs1;
 logic [1:0] forward_rs2;
 logic [31:0] forward_ex_mem_data;
 logic [31:0] forward_mem_wb_data;
-logic if_stall;
-logic if_flush;
+logic stallD;
+logic flushD;
 logic flushE;
 logic stallE;
-logic ex_mem_flush;
-logic ex_mem_stall;
+logic flushM;
+logic stallM;
 logic mdu_busyE;
 logic stallW;
 logic flushW;
 logic new_pc_en;
 pc_sel_t pc_sel;
 
-// FIXME: MRET most probably does not work properly
-logic is_mret = '0;
 logic [31:0] exc_pc;
 
 // Fetch Stage
@@ -145,8 +143,8 @@ wb_prefetch wb_prefetch_i
     .instr_o(instrD),
     .pc_o(pcD),
 
-    .stall_i(if_stall),
-    .flush_cache_i(if_flush),
+    .stall_i(stallD),
+    .flush_cache_i(flushD),
 
     // target addresses
     .branch_target_i(branch_target),
@@ -189,8 +187,8 @@ datapath datapath_i (
     .stallE_i(stallE),
     .flushE_i(flushE),
 
-    .stallM_i(ex_mem_stall),
-    .flushM_i(ex_mem_flush),
+    .stallM_i(stallM),
+    .flushM_i(flushM),
 
     .stallW_i(stallW),
     .flushW_i(flushW),
@@ -217,8 +215,8 @@ privileged privileged_i
     .stallE_i(stallE),
     .flushE_i(flushE),
 
-    .stallM_i(ex_mem_stall),
-    .flushM_i(ex_mem_flush),
+    .stallM_i(stallM),
+    .flushM_i(flushM),
 
     .csr_readM_i(csr_readM),
     .csr_writeM_i(csr_writeM),
@@ -244,7 +242,6 @@ privileged privileged_i
     .take_irq_i(take_irqM),
 
     // mret, traps...
-    .csr_mret_i(is_mret),
     .exc_pc_i(exc_pc),
     // interrupts
     .irq_software_i('0),
@@ -255,7 +252,8 @@ privileged privileged_i
     // used by the performance counters
     .instr_ret_i(mem_wb_instr_valid && !stallW),
 
-    .trapM_o(trapM)
+    .trapM_o(trapM),
+    .mretM_o(mretM)
 );
 
 // Decode Stage
@@ -351,13 +349,12 @@ execute execute_i
     .rs1ValueM_o(rs1ValueM),
     
     // feedback into the pipeline register
-    .stall_i(ex_mem_stall), // keep the same content in the registers
-    .flush_i(ex_mem_flush), // zero the register contents
+    .stall_i(stallM), // keep the same content in the registers
+    .flush_i(flushM), // zero the register contents
 
     .alu_result_o(alu_resultM),
     .alu_oper2_o(ex_mem1_alu_oper2),
     .mem_oper_o(ex_mem1_mem_oper),
-    // .is_csr_o(ex_mem_is_csr),
     .pc_o(ex_mem1_pc),
     .instr_valid_o(ex_mem_instr_valid),
 
@@ -385,8 +382,8 @@ mdu mdu_i
 
     .flushE_i(flushE),
 
-    .stallM_i(ex_mem_stall),
-    .flushM_i(ex_mem_flush),
+    .stallM_i(stallM),
+    .flushM_i(flushM),
 
     .mdu_busyE_o(mdu_busyE),
 
@@ -529,7 +526,7 @@ controller controller_i
     .rdvalueW_i(rdValueW),
     .mem_stall_needed_i(mem_stall_needed),
     .trapM_i(trapM),
-    .sys_instrM_i(sys_instrM),
+    .mretM_i(mretM),
 
     // forwarding control signals
     .forward_rs1_o(forward_rs1),
@@ -544,7 +541,6 @@ controller controller_i
     .mem_wb_instr_valid_i(mem_wb_instr_valid),
 
     // to cs registers
-    // .is_trap_o(is_trap),
     .take_irqM_o(take_irqM),
     .exc_pc_o(exc_pc),
 
@@ -557,21 +553,17 @@ controller controller_i
     .new_pc_en_o(new_pc_en),
     .pc_sel_o(pc_sel),
 
-    // hazard lines to ID/EX
-    .id_ex_flush_o(flushE),
-    .id_ex_stall_o(stallE),
+    .stallD_o(stallD),
+    .flushD_o(flushD),
 
-    // hazard lines to IF
-    .if_stall_o(if_stall),
-    .if_flush_o(if_flush),
+    .flushE_o(flushE),
+    .stallE_o(stallE),
 
-    // flush/stall to EX/MEM1
-    .ex_mem_stall_o(ex_mem_stall),
-    .ex_mem_flush_o(ex_mem_flush),
+    .stallM_o(stallM),
+    .flushM_o(flushM),
 
-    // flush/stall to MEM2/WB
-    .mem_wb_stall_o(stallW),
-    .mem_wb_flush_o(flushW)
+    .stallW_o(stallW),
+    .flushW_o(flushW)
 );
 
 endmodule : core_top

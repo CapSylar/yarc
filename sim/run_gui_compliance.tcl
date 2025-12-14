@@ -278,6 +278,8 @@ add wave ${CORE}/controller_i/*;
 add wave -divider {PRIVILEGED}
 add wave ${CORE}/privileged_i/*;
 
+add wave ${CORE}/*;
+
 # ---------------------------------------------------------
 # disable creation of the transcript file
 transcript off

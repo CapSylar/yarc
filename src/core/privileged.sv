@@ -37,7 +37,6 @@ import csr_pkg::*;
     input wire take_irq_i,
 
     // mret, traps...
-    input wire csr_mret_i,
     input wire [31:0] exc_pc_i,
     // interrupts
     input wire irq_software_i,
@@ -48,7 +47,8 @@ import csr_pkg::*;
     // used by the performance counters
     input wire instr_ret_i,
 
-    output logic trapM_o
+    output logic trapM_o,
+    output logic mretM_o
 );
 
 /*
@@ -88,7 +88,13 @@ flopenrc #(1) illegal_instrM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, illegal_i
  * generate the trap signal
  */
 
-wire trapM = (sys_instrM_i != NO_SYS) | load_misaligned_trapM_i | store_misaligned_trapM_i | illegal_instrM | take_irq_i;
+wire is_mretM = (sys_instrM_i == MRET);
+
+wire trapM = (sys_instrM_i != NO_SYS & ~is_mretM) |
+         load_misaligned_trapM_i |
+         store_misaligned_trapM_i | 
+         illegal_instrM |
+         take_irq_i;
 
 // determine the IRQ code with the highest priority
 logic [3:0] interrupt_code;
@@ -173,12 +179,12 @@ cs_registers cs_registers_i
     // write ports used for traps
 
     // mret, traps...
-    .mret_i(csr_mret_i),
+    .is_mret_i(is_mretM),
     .is_trap_i(trapM),
 
-   .trap_mcause_i(next_mcause),
-   .trap_mepc_i(exc_pc_i),
-   .trap_mtval_i(next_mtval),
+    .trap_mcause_i(next_mcause),
+    .trap_mepc_i(exc_pc_i),
+    .trap_mtval_i(next_mtval),
 
     // interrupts
     .irq_software_i('0),
@@ -190,6 +196,7 @@ cs_registers cs_registers_i
 );
 
 assign trapM_o = trapM;
+assign mretM_o = is_mretM;
 
 endmodule
 

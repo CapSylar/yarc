@@ -26,7 +26,7 @@ import csr_pkg::*;
     output irqs_t irq_pending_o,
 
     // mret, traps...
-    input wire mret_i,
+    input wire is_mret_i,
     input wire is_trap_i,
     input var mcause_t trap_mcause_i,
     input wire [31:0] trap_mepc_i,
@@ -451,7 +451,7 @@ always_comb begin: csr_write
     end
 
     unique case (1'b1)
-        mret_i:
+        is_mret_i:
         begin
             current_plvl_d = mstatus_q.mpp;
 
@@ -485,7 +485,6 @@ always_comb begin: csr_write
             mepc_we = 1'b1;
             mepc_d = trap_mepc_i;
 
-            // TODO: it would be better if mtval would not always be set to zero
             mtval_wen = 1'b1;
             mtval_d = trap_mtval_i;
         end
