@@ -1,5 +1,4 @@
 // dependancy and hazard detection unit
-// TODO: document functionality
 
 module controller
 import riscv_pkg::*;
@@ -7,9 +6,6 @@ import csr_pkg::*;
 (
     input clk_i,
     input rstn_i,
-
-    // from IF
-    input [31:0] if_pc_i,
 
     // ID stage
     input [4:0] rs1D_i,
@@ -21,7 +17,6 @@ import csr_pkg::*;
     input [4:0] rs1E_i,
     input [4:0] rs2E_i,
     input [4:0] rdE_i,
-    input id_ex_write_rd_i,
     input mem_oper_t id_ex_mem_oper_i,
     input is_muldiv_instrE_i,
 
@@ -33,7 +28,6 @@ import csr_pkg::*;
     input [31:0] ex_mem_pc_i,
     input [4:0] rdM_i,
     input ex_mem_write_rd_i,
-    input mem_oper_t ex_mem_mem_oper_i,
     input [31:0] ex_mem_alu_result_i,
 
     // from MEM/WB
@@ -52,23 +46,12 @@ import csr_pkg::*;
     // forward from MEM/WB stage to EX stage
     output logic [31:0] forward_mem_wb_data_o,
 
-    input if_id_instr_valid_i,
-    input id_ex_instr_valid_i,
-    input ex_mem_instr_valid_i,
-    input mem_wb_instr_valid_i,
-
-    // for interrupt handling
-    input priv_lvl_e current_plvl_i,
-    input var mstatus_t csr_mstatus_i,
-    input var irqs_t irq_pending_i,
 
     // to fetch stage, to steer the pc
     output logic new_pc_en_o,
     output pc_sel_t pc_sel_o,
 
     // to cs registers
-    output logic take_irqM_o,
-    // output logic is_trap_o,
     output logic [31:0] exc_pc_o, // this will be saved in mepc
 
     // flush/stall to ID/EX
@@ -90,11 +73,6 @@ import csr_pkg::*;
 
 // forwarding to the EX stage happens when we are writing to a register that is sourced
 // by the instruction currently decoded, it will read a stale value in the decode stage
-
-// we can't forward from the EX stage if the instruction will load from memory
-// since the alu result is not the written value but the address to memory
-wire ex_mem_forward_possible = (rs1E_i != 0) & (rs1E_i == rdM_i) & ex_mem_write_rd_i;
-wire mem_wb_forward_possible = (rs1E_i != 0) & (rs1E_i === rdW_i) & mem_wb_write_rd_i;
 
 // [0] forward from M stage, [1] forward from W stage
 logic [1:0] forward_rs1;
@@ -156,81 +134,6 @@ wire mul_div_use_hzrd = is_muldiv_instrE_i & match_d_e;
 // this is detected in the decode stage
 wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd;
 
-// For now, the cpu always predicts that the branch is not taken and continues
-// On a mispredict, flush the 2 instruction after the branch and continue from the new PC
-
-// Instruction fetch is stalled on:
-// 1- Load use hazard
-// 2- There is a CSR instruction in the pipeline
-
-// handle interrupts
-logic interrupt_en;
-logic handle_irq;
-// Global interrupt enable or In U mode since MIE is a don't care in U mode
-assign interrupt_en = csr_mstatus_i.mie || current_plvl_i == PRIV_LVL_U;
-assign handle_irq = interrupt_en & |irq_pending_i;
-
-// determine the IRQ code with the highest priority
-// logic [3:0] interrupt_code;
-// always_comb
-// begin
-//     interrupt_code = '0;
-//     unique case (1'b1)
-//         irq_pending_i.m_software: interrupt_code = CSR_MSI_BIT;
-//         irq_pending_i.m_timer: interrupt_code = CSR_MTI_BIT;
-//         irq_pending_i.m_external: interrupt_code = CSR_MEI_BIT;
-//         default:;
-//     endcase
-// end
-
-// any instruction still in the pipeline ?
-wire pipeline_empty = !(id_ex_instr_valid_i ||
-                        ex_mem_instr_valid_i ||
-                        mem_wb_instr_valid_i);
-
-logic take_irq;
-
-enum
-{
-    DECODE,
-    IRQ_WAIT // waiting for pipeline to clear to goto interrupt
-} state, next;
-
-// next state logic
-always_ff @(posedge clk_i)
-    if (!rstn_i) state <= DECODE;
-    else state <= next;
-
-always_comb
-begin: core_sm
-    next = state;
-    take_irq = '0;
-
-    unique case (state)
-    DECODE:
-    begin
-        if (handle_irq)
-            next = IRQ_WAIT;
-    end
-    IRQ_WAIT:
-    begin
-        /* when the pipeline is empty, we have to recheck the interrupt pending status.
-        It is possible that when we stalled if and waited for the in-flight instructions
-        to retire, that an interrupt disabling instruction was among them, in this case, we wasted
-        time and need to restart the pipeline as if nothing happened */
-
-        /* an in-flight instruction disabled interrupts or a trap happened */
-        if (!handle_irq || trapM_i || mretM_i)
-            next = DECODE;
-        else if (pipeline_empty)
-        begin
-            take_irq = 1'b1;
-            next = DECODE;
-        end
-    end
-    endcase
-end
-
 always_comb
 begin: if_steering
     new_pc_en_o = '0;
@@ -245,14 +148,7 @@ begin: if_steering
     end else if (mretM_i) begin
         new_pc_en_o = 1'b1;
         pc_sel_o = PC_MEPC;
-    end else if (take_irq) begin
-
-        pc_sel_o = PC_TRAP;
-        new_pc_en_o = 1'b1;
-
-        exc_pc_o = if_pc_i;
     end else if (ex_new_pc_en_i) begin // branch or jump taken
-
         new_pc_en_o = 1'b1; 
     end else if (csr_writeM_i) begin
 
@@ -262,8 +158,6 @@ begin: if_steering
     end
 end
 
-assign take_irqM_o = take_irq;
-
 // if stage N needs to stall, then so does stage N-1 and so on
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
 
@@ -272,7 +166,7 @@ wire flush_causeE = trapM_i | mretM_i | ex_new_pc_en_i | csr_writeM_i;
 wire flush_causeM = trapM_i | mretM_i | csr_writeM_i;
 wire flush_causeW = trapM_i;
 
-wire stall_causeD = ((state == IRQ_WAIT) | load_use_hzrd)& ~flush_causeD;
+wire stall_causeD = load_use_hzrd & ~flush_causeD;
 wire stall_causeE = mdu_busyE_i & ~flush_causeE;
 wire stall_causeM = mem_stall_needed_i & ~flush_causeM;
 

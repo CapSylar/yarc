@@ -13,6 +13,8 @@ import csr_pkg::*;
     input wire stallM_i,
     input wire flushM_i,
 
+    input wire instr_validM_i,
+
     input wire csr_readM_i,
     input wire csr_writeM_i,
     input wire [31:0] rs1ValueM_i,
@@ -26,6 +28,7 @@ import csr_pkg::*;
     output mtvec_t csr_mtvec_o,
     output mstatus_t csr_mstatus_o,
     output priv_lvl_e current_plvl_o,
+    output mcause_t trap_mcauseM_o,
 
     output irqs_t irq_pending_o,
 
@@ -34,15 +37,12 @@ import csr_pkg::*;
     input wire load_misaligned_trapM_i,
     input wire store_misaligned_trapM_i,
     input wire illegal_instrD_i,
-    input wire take_irq_i,
 
     // mret, traps...
     input wire [31:0] exc_pc_i,
     // interrupts
-    input wire irq_software_i,
     input wire irq_timer_i,
     input wire irq_external_i,
-    input var irqs_t irq_pending_i,
 
     // used by the performance counters
     input wire instr_ret_i,
@@ -50,6 +50,8 @@ import csr_pkg::*;
     output logic trapM_o,
     output logic mretM_o
 );
+
+irqs_t irq_pending;
 
 /*
  * CSR instruction decoding and read and write values generation
@@ -85,16 +87,23 @@ flopenrc #(1) illegal_instrE_pipe (clk_i, rstn_i, flushE_i, ~stallE_i, illegal_i
 flopenrc #(1) illegal_instrM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, illegal_instrE, illegal_instrM);
 
 /*
+ * interrupts
+ */
+
+wire is_interrupt_en = csr_mstatus_o.mie | current_plvl_o == PRIV_LVL_U;
+wire take_irq = is_interrupt_en & instr_validM_i & |irq_pending;
+
+/*
  * generate the trap signal
  */
 
 wire is_mretM = (sys_instrM_i == MRET);
 
-wire trapM = (sys_instrM_i != NO_SYS & ~is_mretM) |
-         load_misaligned_trapM_i |
-         store_misaligned_trapM_i | 
-         illegal_instrM |
-         take_irq_i;
+wire trapM = (sys_instrM_i != NO_SYS & ~is_mretM)
+         | load_misaligned_trapM_i
+         | store_misaligned_trapM_i
+         | illegal_instrM
+         | take_irq;
 
 // determine the IRQ code with the highest priority
 logic [3:0] interrupt_code;
@@ -102,9 +111,9 @@ always_comb
 begin
     interrupt_code = '0;
     unique case (1'b1)
-        irq_pending_i.m_software: interrupt_code = CSR_MSI_BIT;
-        irq_pending_i.m_timer: interrupt_code = CSR_MTI_BIT;
-        irq_pending_i.m_external: interrupt_code = CSR_MEI_BIT;
+        irq_pending.m_software: interrupt_code = CSR_MSI_BIT;
+        irq_pending.m_timer:    interrupt_code = CSR_MTI_BIT;
+        irq_pending.m_external: interrupt_code = CSR_MEI_BIT;
         default:;
     endcase
 end
@@ -112,28 +121,29 @@ end
 /*
  * determine mcause
  */
-mcause_t next_mcause;
+mcause_t trap_mcauseM;
 
+// FIXME: unacceptable code quality
 always_comb begin
 
-    next_mcause = '{
+    trap_mcauseM = '{
         irq: 1'b0,
         trap_code: sys_instrM_i[3:0]
     };
 
-    // TODO: unacceptable code quality
-    if (load_misaligned_trapM_i) begin
-        next_mcause.irq = 1'b0;
-        next_mcause.trap_code = 4'd4; // load address misaligned
-    end else if (store_misaligned_trapM_i) begin
-        next_mcause.irq = 1'b0;
-        next_mcause.trap_code = 4'd6; // store/AMO address misaligned
-    end else if (illegal_instrM) begin
-        next_mcause.irq = 1'b0;
-        next_mcause.trap_code = 4'd2; // illegal instruction trap
-    end else if (take_irq_i) begin
-        next_mcause.irq = 1'b1;
-        next_mcause.trap_code = interrupt_code;
+    if (take_irq) begin // interrupts take priority
+        trap_mcauseM.irq = 1'b1;
+        trap_mcauseM.trap_code = interrupt_code;
+    end else begin
+        trap_mcauseM.irq = 1'b0;
+
+        if (load_misaligned_trapM_i) begin
+            trap_mcauseM.trap_code = 4'd4; // load address misaligned
+        end else if (store_misaligned_trapM_i) begin
+            trap_mcauseM.trap_code = 4'd6; // store/AMO address misaligned
+        end else if (illegal_instrM) begin
+            trap_mcauseM.trap_code = 4'd2; // illegal instruction trap
+        end
     end
 end
 
@@ -174,7 +184,7 @@ cs_registers cs_registers_i
     .csr_mstatus_o(csr_mstatus_o),
     .current_plvl_o(current_plvl_o),
 
-    .irq_pending_o(irq_pending_o),
+    .irq_pending_o(irq_pending),
 
     // write ports used for traps
 
@@ -182,21 +192,23 @@ cs_registers cs_registers_i
     .is_mret_i(is_mretM),
     .is_trap_i(trapM),
 
-    .trap_mcause_i(next_mcause),
+    .trap_mcause_i(trap_mcauseM),
     .trap_mepc_i(exc_pc_i),
     .trap_mtval_i(next_mtval),
 
     // interrupts
-    .irq_software_i('0),
+    .irq_software_i('0), // one only hard is currently present
     .irq_timer_i(irq_timer_i),
     .irq_external_i(irq_external_i),
 
     // used by the performance counters
-    .instr_ret_i(1'b0)
+    .instr_ret_i(instr_ret_i)
 );
 
 assign trapM_o = trapM;
 assign mretM_o = is_mretM;
+assign irq_pending_o = irq_pending;
+assign trap_mcauseM_o = trap_mcauseM;
 
 endmodule
 

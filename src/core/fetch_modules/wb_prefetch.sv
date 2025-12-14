@@ -33,12 +33,17 @@ import csr_pkg::*;
     input [31:0] branch_target_i,
     input [31:0] csr_mepc_i,
     input [31:0] pcE_i,
-    input var mtvec_t mtvec_i
+    input var mtvec_t mtvec_i,
+    input var mcause_t trap_mcauseM_i
 );
 
 logic stb;
 logic [31:0] new_pc;
+
+logic [31:0] inter_target_addr;
 logic [31:0] exc_target_addr;
+logic [31:0] trap_target_addr;
+
 logic [31:0] arch_pc_q, arch_pc_d;
 logic [31:0] fetch_pc_q, fetch_pc_d;
 
@@ -81,18 +86,21 @@ sync_fifo_i
     .fill_count_o(ff_fill_count)
 );
 
-// calculate the expection target address from mtvec and mcause
+// calcualte the exceptiont target address from mtvec
+assign exc_target_addr = {mtvec_i.base, 2'b00};
+
+// calculate the interrupt target address from mtvec and mcause
 always_comb
 begin
-    exc_target_addr = '0;
+    inter_target_addr = '0;
     unique case (mtvec_i.mode)
-        MTVEC_DIRECT: exc_target_addr = {mtvec_i.base, 2'b00};
-
-        // FIXME: doesn't work
-        MTVEC_VECTORED: exc_target_addr = {mtvec_i.base + 30'(1'b0), 2'b00};
+        MTVEC_DIRECT: inter_target_addr = exc_target_addr;
+        MTVEC_VECTORED: inter_target_addr = {mtvec_i.base + 30'(trap_mcauseM_i.trap_code), 2'b00};
         default:;
     endcase
 end
+
+assign trap_target_addr = trap_mcauseM_i.irq ? inter_target_addr : exc_target_addr;
 
 // determine the new pc
 always_comb
@@ -101,7 +109,7 @@ begin
     unique case (pc_sel_i)
         PC_JUMP: new_pc = branch_target_i;
         PC_MEPC: new_pc = csr_mepc_i;
-        PC_TRAP: new_pc = exc_target_addr;
+        PC_TRAP: new_pc = trap_target_addr;
         PC_CSRW: new_pc = pcE_i;
         default:;
     endcase

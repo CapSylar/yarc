@@ -247,17 +247,18 @@ add wave -color Turquoise ${CORE}/controller_i/forward_rs1_o;
 add wave -color Turquoise ${CORE}/controller_i/forward_rs2_o;
 add wave -color Turquoise ${CORE}/controller_i/forward_ex_mem_data_o;
 add wave -color Turquoise ${CORE}/controller_i/forward_mem_wb_data_o;
-add wave -color Turquoise ${CORE}/controller_i/id_ex_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/id_ex_stall_o;
-add wave -color Turquoise ${CORE}/controller_i/if_stall_o;
-add wave -color Turquoise ${CORE}/controller_i/if_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/ex_mem_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/ex_mem_stall_o;
-add wave -color Turquoise ${CORE}/controller_i/mem_wb_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/mem_wb_stall_o;
 
-add wave ${CORE}/controller_i/state;
-add wave ${CORE}/controller_i/next;
+add wave -color Turquoise ${CORE}/controller_i/flushE_o;
+add wave -color Turquoise ${CORE}/controller_i/stallE_o;
+
+add wave -color Turquoise ${CORE}/controller_i/stallD_o;
+add wave -color Turquoise ${CORE}/controller_i/flushD_o;
+
+add wave -color Turquoise ${CORE}/controller_i/stallM_o;
+add wave -color Turquoise ${CORE}/controller_i/flushM_o;
+
+add wave -color Turquoise ${CORE}/controller_i/stallW_o;
+add wave -color Turquoise ${CORE}/controller_i/flushW_o;
 
 add wave ${CORE}/controller_i/new_pc_en_o;
 add wave ${CORE}/controller_i/pc_sel_o;

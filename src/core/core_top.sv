@@ -30,7 +30,7 @@ import csr_pkg::*;
 // Signal definitions
 
 // Driven by the Fetch stage
-logic if_instr_valid;
+logic instr_validD;
 logic [31:0] instrD;
 logic [31:0] instrE;
 logic [31:0] instrM;
@@ -44,6 +44,7 @@ logic [31:0] csr_rdataM, csr_rdataW;
 logic [31:0] csr_mepc;
 priv_lvl_e current_plvl;
 mtvec_t csr_mtvec;
+mcause_t trap_mcauseM;
 mstatus_t csr_mstatus;
 irqs_t irq_pending;
 
@@ -54,7 +55,7 @@ logic [31:0] pcE, id_ex_rs1_data, id_ex_rs2_data, id_ex_imm;
 alu_oper1_src_t id_ex_alu_oper1_src;
 alu_oper2_src_t id_ex_alu_oper2_src;
 bnj_oper_t id_ex_bnj_oper;
-logic id_ex_instr_valid;
+logic instr_validE;
 logic is_muldiv_instrE;
 logic illegal_instrD;
 alu_oper_t id_ex_alu_oper;
@@ -69,7 +70,7 @@ exc_t sys_instrE;
 exc_t sys_instrM;
 logic load_misaligned_trapM;
 logic store_misaligned_trapM;
-logic take_irqM;
+// logic take_irqM;
 
 // Driven by the Ex stage
 logic [31:0] rs1_forwarded_valueE;
@@ -82,7 +83,7 @@ logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
 logic ex_new_pc_en;
 logic [31:0] ex_mem1_pc;
-logic ex_mem_instr_valid;
+logic instr_validM;
 logic trapM, mretM;
 
 // Driven by the Mem stage
@@ -99,7 +100,7 @@ logic [31:0] muldiv_resultW;
 
 // Driven by the WB stage
 logic mem_wb_write_rd;
-logic mem_wb_instr_valid;
+logic instr_validW;
 logic [4:0] mem_wb_rd_addr;
 logic [31:0] mem_wb_alu_result;
 logic [31:0] mem_wb_lsu_rdata;
@@ -139,7 +140,7 @@ wb_prefetch wb_prefetch_i
     // IMEM Wishbone interface
     .wb_if(instr_fetch_wb_if),
 
-    .valid_o(if_instr_valid),
+    .valid_o(instr_validD),
     .instr_o(instrD),
     .pc_o(pcD),
 
@@ -150,6 +151,7 @@ wb_prefetch wb_prefetch_i
     .branch_target_i(branch_target),
     .csr_mepc_i(csr_mepc),
     .mtvec_i(csr_mtvec),
+    .trap_mcauseM_i(trap_mcauseM),
     .pcE_i(pcE),
 
     .new_pc_en_i(new_pc_en),
@@ -218,6 +220,8 @@ privileged privileged_i
     .stallM_i(stallM),
     .flushM_i(flushM),
 
+    .instr_validM_i(instr_validM),
+
     .csr_readM_i(csr_readM),
     .csr_writeM_i(csr_writeM),
     .rs1ValueM_i(rs1ValueM),
@@ -231,6 +235,7 @@ privileged privileged_i
     .csr_mtvec_o(csr_mtvec),
     .csr_mstatus_o(csr_mstatus),
     .current_plvl_o(current_plvl),
+    .trap_mcauseM_o(trap_mcauseM),
 
     .irq_pending_o(irq_pending),
 
@@ -239,18 +244,15 @@ privileged privileged_i
     .load_misaligned_trapM_i(load_misaligned_trapM),
     .store_misaligned_trapM_i(store_misaligned_trapM),
     .illegal_instrD_i(illegal_instrD),
-    .take_irq_i(take_irqM),
 
     // mret, traps...
     .exc_pc_i(exc_pc),
     // interrupts
-    .irq_software_i('0),
     .irq_timer_i(irq_timer_i),
     .irq_external_i(irq_external_i),
-    .irq_pending_i(irq_pending),
 
     // used by the performance counters
-    .instr_ret_i(mem_wb_instr_valid && !stallW),
+    .instr_ret_i(instr_validW && !stallW),
 
     .trapM_o(trapM),
     .mretM_o(mretM)
@@ -261,7 +263,7 @@ decode decode_i
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .instr_valid_i(if_instr_valid),
+    .instr_valid_i(instr_validD),
 
     // from csr unit
     .current_plvl_i(current_plvl),
@@ -296,7 +298,7 @@ decode decode_i
     .alu_oper2_src_o(id_ex_alu_oper2_src),
     .bnj_oper_o(id_ex_bnj_oper),
     .alu_oper_o(id_ex_alu_oper),
-    .instr_valid_o(id_ex_instr_valid),
+    .instr_valid_o(instr_validE),
 
     .is_muldiv_instrE_o(is_muldiv_instrE),
 
@@ -335,7 +337,7 @@ execute execute_i
     .alu_oper2_src_i(id_ex_alu_oper2_src),
     .alu_oper_i(id_ex_alu_oper),
     .bnj_oper_i(id_ex_bnj_oper),
-    .instr_valid_i(id_ex_instr_valid),
+    .instr_valid_i(instr_validE),
     .mem_oper_i(id_ex_mem_oper),
 
     .rs1_forwarded_value_o(rs1_forwarded_valueE),
@@ -356,7 +358,7 @@ execute execute_i
     .alu_oper2_o(ex_mem1_alu_oper2),
     .mem_oper_o(ex_mem1_mem_oper),
     .pc_o(ex_mem1_pc),
-    .instr_valid_o(ex_mem_instr_valid),
+    .instr_valid_o(instr_validM),
 
     // for WB stage exclusively
     .write_rd_o(ex_mem1_write_rd),
@@ -420,7 +422,7 @@ stage_mem1 stage_mem1_i
     .alu_oper2_i(ex_mem1_alu_oper2),
     .mem_oper_i(ex_mem1_mem_oper),
 
-    .instr_valid_i(ex_mem_instr_valid),
+    .instr_valid_i(instr_validM),
     .trapM_i(trapM),
 
     // for WB stage exclusively
@@ -428,7 +430,7 @@ stage_mem1 stage_mem1_i
     .rd_addr_i(ex_mem1_rd_addr),
 
     // MEM/WB pipeline registers
-    .instr_valid_o(mem_wb_instr_valid),
+    .instr_valid_o(instr_validW), // TOOD: clean that shit
     .write_rd_o(mem_wb_write_rd),
     .rd_addr_o(mem_wb_rd_addr),
     .alu_result_o(mem_wb_alu_result),
@@ -492,9 +494,6 @@ controller controller_i
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
-    // from IF
-    .if_pc_i(pcD),
-
     // from ID stage
     .rs1D_i(rs1_addr),
     .rs2D_i(rs2_addr),
@@ -505,7 +504,6 @@ controller controller_i
     .rs1E_i(id_ex_rs1_addr),
     .rs2E_i(id_ex_rs2_addr),
     .rdE_i(id_ex_rd_addr),
-    .id_ex_write_rd_i(id_ex_write_rd),
     .id_ex_mem_oper_i(id_ex_mem_oper),
     .is_muldiv_instrE_i(is_muldiv_instrE),
 
@@ -517,7 +515,6 @@ controller controller_i
     .ex_mem_pc_i(ex_mem1_pc),
     .rdM_i(ex_mem1_rd_addr),
     .ex_mem_write_rd_i(ex_mem1_write_rd),
-    .ex_mem_mem_oper_i(ex_mem1_mem_oper),
     .ex_mem_alu_result_i(alu_resultM),
 
     // from MEM/WB
@@ -535,19 +532,8 @@ controller controller_i
     .forward_ex_mem_data_o(forward_ex_mem_data),
     .forward_mem_wb_data_o(forward_mem_wb_data),
 
-    .if_id_instr_valid_i(if_instr_valid),
-    .id_ex_instr_valid_i(id_ex_instr_valid),
-    .ex_mem_instr_valid_i(ex_mem_instr_valid),
-    .mem_wb_instr_valid_i(mem_wb_instr_valid),
-
     // to cs registers
-    .take_irqM_o(take_irqM),
     .exc_pc_o(exc_pc),
-
-    // for interrupt handling
-    .current_plvl_i(current_plvl),
-    .csr_mstatus_i(csr_mstatus),
-    .irq_pending_i(irq_pending),
 
     // to fetch stage, to steer the pc
     .new_pc_en_o(new_pc_en),
