@@ -8,8 +8,8 @@ import riscv_pkg::*;
     input wire stallM_i,
     input wire flushM_i,
 
-    input wire [31:0] input_a,
-    input wire [31:0] input_b,
+    input wire [31:0] input_a_i,
+    input wire [31:0] input_b_i,
 
     input wire [2:0] funct3_i,
 
@@ -31,16 +31,16 @@ logic [XLEN-2:0] pa, pb;
 logic [2*XLEN-1:0] pp0E, pp1E, pp2E, pp3E;
 logic [2*XLEN-1:0] pp0M, pp1M, pp2M, pp3M;
 
-assign Aprime = {1'b0, input_a[XLEN-2:0]};
-assign Bprime = {1'b0, input_b[XLEN-2:0]};
+assign Aprime = {1'b0, input_a_i[XLEN-2:0]};
+assign Bprime = {1'b0, input_b_i[XLEN-2:0]};
 
 // product of the MSB of A and the bits of B[XLEN-2:0]
-assign pa = {31{input_a[31]}} & input_b[XLEN-2:0];
+assign pa = {31{input_a_i[31]}} & input_b_i[XLEN-2:0];
 
 // product of the MSB of B and the bits of A[XLEN-2:0]
-assign pb = {31{input_b[31]}} & input_a[XLEN-2:0];
+assign pb = {31{input_b_i[31]}} & input_a_i[XLEN-2:0];
 
-assign pp = input_a[31] & input_b[31];
+assign pp = input_a_i[31] & input_b_i[31];
 
 // always unsigned since it doesn't include the MSBs which are the sign bits
 assign pp0E = Aprime * Bprime;

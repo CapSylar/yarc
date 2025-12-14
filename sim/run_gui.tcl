@@ -186,6 +186,7 @@ add wave -group {ALL EXECUTE} ${CORE}/execute_i/*;
 # ---------------------------------------------------------
 add wave -group {MDU} ${CORE}/mdu_i/*;
 add wave -group {MDU} ${CORE}/mdu_i/multiplier_i/*;
+add wave -group {MDU} ${CORE}/mdu_i/divider_i/*;
 
 # ---------------------------------------------------------
 add wave -divider {MEM}

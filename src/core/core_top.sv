@@ -122,6 +122,7 @@ logic flushE;
 logic stallE;
 logic ex_mem_flush;
 logic ex_mem_stall;
+logic mdu_busyE;
 logic stallW;
 logic flushW;
 logic new_pc_en;
@@ -382,8 +383,12 @@ mdu mdu_i
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
+    .flushE_i(flushE),
+
     .stallM_i(ex_mem_stall),
     .flushM_i(ex_mem_flush),
+
+    .mdu_busyE_o(mdu_busyE),
 
     .rs1_forwarded_value_i(rs1_forwarded_valueE),
     .rs2_forwarded_value_i(rs2_forwarded_valueE),
@@ -511,6 +516,7 @@ controller controller_i
     .ex_new_pc_en_i(ex_new_pc_en),
 
     // from EX/MEM
+    .mdu_busyE_i(mdu_busyE),
     .ex_mem_pc_i(ex_mem1_pc),
     .rdM_i(ex_mem1_rd_addr),
     .ex_mem_write_rd_i(ex_mem1_write_rd),

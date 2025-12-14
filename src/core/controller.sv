@@ -29,6 +29,7 @@ import csr_pkg::*;
     input ex_new_pc_en_i,
 
     // from EX/MEM
+    input mdu_busyE_i,
     input [31:0] ex_mem_pc_i,
     input [4:0] rdM_i,
     input ex_mem_write_rd_i,
@@ -278,7 +279,7 @@ wire flush_causeM = trapM_i | csr_writeM_i;
 wire flush_causeW = trapM_i;
 
 wire stall_causeD = ((state == IRQ_WAIT) | load_use_hzrd)& ~flush_causeD;
-wire stall_causeE = 1'b0; // can't stall in EX for now
+wire stall_causeE = mdu_busyE_i & ~flush_causeE;
 wire stall_causeM = mem_stall_needed_i & ~flush_causeM;
 
 // this is done to preserve forwarding paths, stalling W when M is stalled incurrs no penalty

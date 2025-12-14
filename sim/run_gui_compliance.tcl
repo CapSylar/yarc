@@ -183,6 +183,11 @@ add wave ${CORE}/execute_i/operand2;
 
 add wave -group {ALL EXECUTE} ${CORE}/execute_i/*;
 # ---------------------------------------------------------
+add wave -group {MDU} ${CORE}/mdu_i/*;
+add wave -group {MDU} ${CORE}/mdu_i/multiplier_i/*;
+add wave -group {MDU} ${CORE}/mdu_i/divider_i/*;
+
+# ---------------------------------------------------------
 add wave -divider {MEM}
 add wave ${CORE}/stage_mem1_i/lsu_req_o;
 add wave ${CORE}/stage_mem1_i/lsu_addr_o;

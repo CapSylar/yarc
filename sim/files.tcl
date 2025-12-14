@@ -60,6 +60,7 @@ ${PRJ_DIR}/core/decode.sv
 ${PRJ_DIR}/core/controller.sv
 ${PRJ_DIR}/core/execute.sv
 ${PRJ_DIR}/core/multiplier.sv
+${PRJ_DIR}/core/divider.sv
 ${PRJ_DIR}/core/mdu.sv
 ${PRJ_DIR}/core/reg_file.sv
 ${PRJ_DIR}/core/write_back.sv
