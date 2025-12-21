@@ -10,10 +10,13 @@ import riscv_pkg::*;
     input write_rd_i,
     input var result_src_e result_srcW_i,
     input [4:0] rd_addr_i,
+
+    // result sources
     input [31:0] alu_result_i,
     input [31:0] lsu_rdata_i,
     input [31:0] csr_rdata_i,
     input [31:0] muldiv_resultW_i,
+    input wire is_fail_scW_i,
 
     output [31:0] rdValueW_o,
 
@@ -27,11 +30,12 @@ import riscv_pkg::*;
 assign regf_write_o = write_rd_i;
 assign regf_waddr_o = rd_addr_i;
 
-mux4 #(32) wb_data_mux (
+mux5 #(32) wb_data_mux (
     alu_result_i,
     lsu_rdata_i,
     csr_rdata_i,
     muldiv_resultW_i,
+    32'(is_fail_scW_i),
     result_srcW_i,
     rdValueW_o
 );

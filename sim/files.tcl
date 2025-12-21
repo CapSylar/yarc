@@ -69,8 +69,9 @@ ${PRJ_DIR}/core/cs_registers.sv
 ${PRJ_DIR}/core/datapath.sv
 ${PRJ_DIR}/core/privileged.sv
 ${PRJ_DIR}/core/csr.sv
-${PRJ_DIR}/core/stage_mem1.sv
+${PRJ_DIR}/core/lrsc.sv
 ${PRJ_DIR}/core/lsu.sv
+${PRJ_DIR}/core/wishbone_lsu_driver.sv
 
 // platform
 ${PRJ_DIR}/bus_components/addrdecode.v

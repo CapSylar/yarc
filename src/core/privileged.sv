@@ -81,6 +81,7 @@ assign csr_addressM = instructionM_i[31:20];
 wire csr_write_gatedM = csr_writeM_i & ~stallM_i;
 
 logic illegal_instrE, illegal_instrM;
+logic illegal_csr_accessM;
 
 // delay illegal instruction trap
 flopenrc #(1) illegal_instrE_pipe (clk_i, rstn_i, flushE_i, ~stallE_i, illegal_instrD_i, illegal_instrE);
@@ -103,6 +104,7 @@ wire trapM = (sys_instrM_i != NO_SYS & ~is_mretM)
          | load_misaligned_trapM_i
          | store_misaligned_trapM_i
          | illegal_instrM
+         | illegal_csr_accessM
          | take_irq;
 
 // determine the IRQ code with the highest priority
@@ -141,7 +143,7 @@ always_comb begin
             trap_mcauseM.trap_code = 4'd4; // load address misaligned
         end else if (store_misaligned_trapM_i) begin
             trap_mcauseM.trap_code = 4'd6; // store/AMO address misaligned
-        end else if (illegal_instrM) begin
+        end else if (illegal_instrM | illegal_csr_accessM) begin
             trap_mcauseM.trap_code = 4'd2; // illegal instruction trap
         end
     end
@@ -170,12 +172,11 @@ cs_registers cs_registers_i
 
     // read port
     .csr_re_i(csr_readM_i),
-    .csr_raddr_i(csr_addressM),
+    .csr_addr_i(csr_addressM),
     .csr_rdata_o(csr_rdataM_o),
 
     // write port
     .csr_we_i(csr_write_gatedM),
-    .csr_waddr_i(csr_addressM),
     .csr_wdata_i(csr_to_writeM),
 
     // output some cs registers
@@ -202,7 +203,9 @@ cs_registers cs_registers_i
     .irq_external_i(irq_external_i),
 
     // used by the performance counters
-    .instr_ret_i(instr_ret_i)
+    .instr_ret_i(instr_ret_i),
+
+    .illegal_csr_accessM_o(illegal_csr_accessM)
 );
 
 assign trapM_o = trapM;

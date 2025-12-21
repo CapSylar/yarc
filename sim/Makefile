@@ -48,6 +48,8 @@ export PRJ_DIR
 export SIM_TOP = $(TOPMOD)
 export OBJCACHE = ccache
 
+$(info TOPMOD is $(TOPMOD))
+
 TIMESCALE := -timescale "1ps/1ps"
 
 #verilator arguments
@@ -93,5 +95,6 @@ questa_clean:
 
 clean:
 	rm -rf $(VDIRFB)/
+	qrun -clean
 
 .PHONY: questa questa_clean clean run_sim verilator

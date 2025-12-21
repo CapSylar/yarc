@@ -9,12 +9,11 @@ import csr_pkg::*;
 
     // read port
     input wire csr_re_i,
-    input wire [11:0] csr_raddr_i,
+    input wire [11:0] csr_addr_i,
     output logic [31:0] csr_rdata_o,
 
     // write port
     input wire csr_we_i,
-    input wire [11:0] csr_waddr_i,
     input wire [31:0] csr_wdata_i,
 
     // output some cs registers
@@ -38,12 +37,13 @@ import csr_pkg::*;
     input wire irq_external_i,
 
     // used by the performance counters
-    input wire instr_ret_i
+    input wire instr_ret_i,
+
+    output logic illegal_csr_accessM_o
 );
 
-csr_t csr_raddr, csr_waddr;
-assign csr_raddr = csr_t'(csr_raddr_i);
-assign csr_waddr = csr_t'(csr_waddr_i);
+csr_t csr_addr;
+assign csr_addr = csr_t'(csr_addr_i);
 
 // current privilege level
 priv_lvl_e current_plvl_d, current_plvl_q;
@@ -184,11 +184,9 @@ logic [31:0] mhpmcounter_we;
 logic [31:0] mhpmcounterh_we;
 logic [31:0] mhpmcounter_incr;
 
-logic [4:0] mhpmcounter_ridx; // read index
-logic [4:0] mhpmcounter_widx; // write index
+logic [4:0] mhpmcounter_idx; // read index
 
-assign mhpmcounter_ridx = csr_raddr_i[4:0];
-assign mhpmcounter_widx = csr_waddr_i[4:0];
+assign mhpmcounter_idx = csr_addr_i[4:0];
 
 always_comb
 begin
@@ -287,14 +285,16 @@ csr #(.Width(32), .ResetValue('0)) csr_mtval
 );
 
 logic [31:0] csr_rdata;
+logic illegal_csr_read;
 
 // read logic
 always_comb begin: csr_read
     csr_rdata = '0;
+    illegal_csr_read = 1'b0;
 
     if (csr_re_i)
     begin
-        unique case (csr_raddr)
+        unique case (csr_addr)
             CSR_MISA: csr_rdata = misa_q;
             CSR_MVENDORID: csr_rdata = mvendorid_q;
             CSR_MHARTID: csr_rdata = MHART_ID;
@@ -335,21 +335,24 @@ always_comb begin: csr_read
             // Performance Counters
             CSR_MCYCLE, CSR_MINSTRET: // lower half
             begin
-                csr_rdata = mhpmcounter[mhpmcounter_ridx][31:0];
+                csr_rdata = mhpmcounter[mhpmcounter_idx][31:0];
             end
 
             CSR_MCYCLEH, CSR_MINSTRETH: // upper half
             begin
-                csr_rdata = mhpmcounter[mhpmcounter_ridx][63:32];
+                csr_rdata = mhpmcounter[mhpmcounter_idx][63:32];
             end
-            default:;
+            default: illegal_csr_read = 1'b1;
         endcase
     end
 end
 
+logic illegal_csr_write;
+
 // write logic
 always_comb begin: csr_write
 
+    illegal_csr_write = 1'b0;
     current_plvl_d = current_plvl_q;
 
     mscratch_we = 1'b0;
@@ -382,7 +385,14 @@ always_comb begin: csr_write
     // CSR read and writes from CSRRW/S/C instructions
     if (csr_we_i)
     begin
-        unique case (csr_waddr)
+        unique case (csr_addr)
+            CSR_MISA,
+            CSR_MVENDORID,
+            CSR_MHARTID,
+            CSR_MIMPID: begin
+                illegal_csr_write = 1'b1;
+            end
+
             CSR_MSCRATCH: mscratch_we = 1'b1;
             CSR_MSTATUS:
             begin
@@ -439,14 +449,14 @@ always_comb begin: csr_write
             // performance counters
             CSR_MCYCLE, CSR_MINSTRET:
             begin
-                mhpmcounter_we[mhpmcounter_widx] = 1'b1;
+                mhpmcounter_we[mhpmcounter_idx] = 1'b1;
             end
 
             CSR_MCYCLEH, CSR_MINSTRETH:
             begin
-                mhpmcounterh_we[mhpmcounter_widx] = 1'b1;
+                mhpmcounterh_we[mhpmcounter_idx] = 1'b1;
             end
-            default:;
+            default: illegal_csr_write = 1'b1;
         endcase
     end
 
@@ -499,5 +509,7 @@ assign csr_mtvec_o = mtvec_q;
 assign csr_mstatus_o = mstatus_q;
 assign current_plvl_o = current_plvl_q;
 assign irq_pending_o = mip_d & mie_q;
+
+assign illegal_csr_accessM_o = illegal_csr_read | illegal_csr_write;
 
 endmodule: cs_registers

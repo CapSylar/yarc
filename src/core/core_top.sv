@@ -59,7 +59,8 @@ logic instr_validE;
 logic is_muldiv_instrE;
 logic illegal_instrD;
 alu_oper_t id_ex_alu_oper;
-mem_oper_t mem_operE;
+mem_oper_t mem_opD;
+atomic_op_e atomic_opD;
 logic csr_writeE;
 logic id_ex_write_rd;
 result_src_e result_srcE, result_srcW;
@@ -77,7 +78,9 @@ logic [31:0] rs1_forwarded_valueE;
 logic [31:0] rs2_forwarded_valueE;
 logic [31:0] alu_resultM;
 logic [31:0] ex_mem1_alu_oper2;
-mem_oper_t mem_operM;
+mem_oper_t mem_opE;
+mem_oper_t mem_opM;
+atomic_op_e atomic_opM;
 logic ex_mem1_write_rd;
 logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
@@ -104,6 +107,7 @@ logic instr_validW;
 logic [4:0] mem_wb_rd_addr;
 logic [31:0] mem_wb_alu_result;
 logic [31:0] mem_wb_lsu_rdata;
+logic is_fail_scW;
 logic mem_stall_needed;
 logic [31:0] rdValueW;
 
@@ -185,6 +189,13 @@ datapath datapath_i (
 
     .csr_writeE_i(csr_writeE),
     .result_srcE_i(result_srcE),
+
+    .mem_opD_i(mem_opD),
+    .atomic_opD_i(atomic_opD),
+
+    .mem_opE_o(mem_opE),
+    .mem_opM_o(mem_opM),
+    .atomic_opM_o(atomic_opM),
     
     .stallE_i(stallE),
     .flushE_i(flushE),
@@ -306,7 +317,8 @@ decode decode_i
     .illegal_instrD_o(illegal_instrD),
 
     // for the MEM stage
-    .mem_operE_o(mem_operE),
+    .mem_opD_o(mem_opD),
+    .atomic_opD_o(atomic_opD),
     // .csr_waddr_o(id_ex_csr_waddr),
     .csr_we_o(csr_writeE),
 
@@ -338,7 +350,6 @@ execute execute_i
     .alu_oper_i(id_ex_alu_oper),
     .bnj_oper_i(id_ex_bnj_oper),
     .instr_valid_i(instr_validE),
-    .mem_operE_i(mem_operE),
 
     .rs1_forwarded_value_o(rs1_forwarded_valueE),
     .rs2_forwarded_value_o(rs2_forwarded_valueE),
@@ -356,7 +367,6 @@ execute execute_i
 
     .alu_result_o(alu_resultM),
     .alu_oper2_o(ex_mem1_alu_oper2),
-    .mem_operM_o(mem_operM),
     .pc_o(ex_mem1_pc),
     .instr_valid_o(instr_validM),
 
@@ -400,8 +410,8 @@ mdu mdu_i
     .resultW_o(muldiv_resultW)
 );
 
-// MEM1 Stage (Setting up Memory request
-stage_mem1 stage_mem1_i
+// LSU 
+lsu lsu_i
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
@@ -420,7 +430,8 @@ stage_mem1 stage_mem1_i
     // from EX/MEM
     .alu_result_i(alu_resultM),
     .alu_oper2_i(ex_mem1_alu_oper2),
-    .mem_operM_i(mem_operM),
+    .mem_opM_i(mem_opM),
+    .atomic_opM_i(atomic_opM),
 
     .instr_valid_i(instr_validM),
     .trapM_i(trapM),
@@ -435,17 +446,18 @@ stage_mem1 stage_mem1_i
     .rd_addr_o(mem_wb_rd_addr),
     .alu_result_o(mem_wb_alu_result),
     .lsu_rdata_o(mem_wb_lsu_rdata),
+    .is_fail_scW_o(is_fail_scW),
 
     .lsu_stall_m_o(mem_stall_needed),
     .load_misaligned_trapM_o(load_misaligned_trapM),
     .store_misaligned_trapM_o(store_misaligned_trapM),
 
-    .stall_i(stallW),
-    .flush_i(flushW)
+    .stallW_i(stallW),
+    .flushW_i(flushW)
 );
 
 // Load Store Unit
-lsu lsu_i
+wishbone_lsu_driver wishbone_lsu_driver_i
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
@@ -479,6 +491,7 @@ write_back write_back_i
     .lsu_rdata_i(mem_wb_lsu_rdata),
     .csr_rdata_i(csr_rdataW),
     .muldiv_resultW_i(muldiv_resultW),
+    .is_fail_scW_i(is_fail_scW),
 
     .rdValueW_o(rdValueW),
 
@@ -504,7 +517,7 @@ controller controller_i
     .rs1E_i(id_ex_rs1_addr),
     .rs2E_i(id_ex_rs2_addr),
     .rdE_i(id_ex_rd_addr),
-    .mem_operE_i(mem_operE),
+    .mem_operE_i(mem_opE),
     .is_muldiv_instrE_i(is_muldiv_instrE),
 
     // from EX stage

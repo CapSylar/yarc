@@ -51,8 +51,8 @@ import csr_pkg::*;
     output logic illegal_instrD_o,
 
     // for the MEM stage
-    output mem_oper_t mem_operE_o,
-    // output logic [11:0] csr_waddr_o,
+    output mem_oper_t mem_opD_o,
+    output atomic_op_e atomic_opD_o,
     output logic csr_we_o,
 
     // for the WB stage
@@ -118,7 +118,7 @@ assign imm_csr = 32'({instr_i[19:15]}); // used for immediate csr instructions
 alu_oper_t alu_oper;
 logic [31:0] curr_imm;
 logic write_rd;
-result_src_e result_src;
+result_src_e result_srcD;
 
 alu_oper1_src_t alu_oper1_src;
 alu_oper2_src_t alu_oper2_src;
@@ -140,7 +140,7 @@ begin : main_decode
     alu_oper2_src = OPER2_RS2;
 
     write_rd = '0;
-    result_src = RESULT_ALU;
+    result_srcD = RESULT_ALU;
     curr_imm = '0;
     bnj_oper = BNJ_NO; // no branch
 
@@ -212,7 +212,7 @@ begin : main_decode
                 curr_imm = imm_i;
 
                 write_rd = 1;
-                result_src = RESULT_MEM;
+                result_srcD = RESULT_MEM;
 
                 mem_operD.mem_rw = 2'b10;
             end
@@ -231,7 +231,7 @@ begin : main_decode
                 
                 if (is_func7_muldiv) begin
                     is_muldiv_instrD = 1'b1;
-                    result_src = RESULT_MDU;
+                    result_srcD = RESULT_MDU;
                 end else if (!is_r_type) begin
                     illegal_instrD_o = 1'b1;
                 end
@@ -270,7 +270,7 @@ begin : main_decode
                 else  // CSR instruction
                 begin
                     write_rd = 1'b1;
-                    result_src = RESULT_CSR;
+                    result_srcD = RESULT_CSR;
                     // determine if csr will be read
                     // In CSRRW*: if rd = Zero, the csr is not read and any read side-effects will not be triggered
                     csr_re = ((system_opc_t'(func3) == CSRRW ||
@@ -286,20 +286,21 @@ begin : main_decode
 
             ATOMIC: begin
                 alu_oper2_src = OPER2_ZERO;
+                write_rd = 1'b1;
 
                 // LR.D
                 if ((instr_i[24:20] == 5'b0) & (upper_5 == 5'b00010)) begin
                     atomic_opD = ATOMIC_LR;
-
-                    write_rd = 1'b1;
-                    result_src = RESULT_MEM;
+                    result_srcD = RESULT_MEM;
 
                     mem_operD.mem_rw = 2'b10;
-                end else if ((instr_i == 5'b00011)) begin  // SC.D
+                end else if ((upper_5 == 5'b00011)) begin  // SC.D
+                    result_srcD = RESULT_SC;
                     atomic_opD = ATOMIC_LR;
 
                     mem_operD.mem_rw = 2'b01;
                 end else if (is_valid_amo) begin
+                    result_srcD = RESULT_MEM;
                     mem_operD.mem_rw = 2'b11;
                     atomic_opD = ATOMIC_AMO;
                 end else begin
@@ -364,6 +365,8 @@ end
 assign regf_rs1_addr_o = rs1;
 assign regf_rs2_addr_o = rs2;
 assign csr_re_o = csr_re;
+assign mem_opD_o = mem_operD;
+assign atomic_opD_o = atomic_opD;
 
 flopenrc #(1) pipeline (clk_i, rstn_i, flush_i, ~stall_i, is_muldiv_instrD, is_muldiv_instrE_o);
 
@@ -382,7 +385,6 @@ begin : id_ex_pip
         alu_oper_o <= ALU_ADD;
         instr_valid_o <= '0;
 
-        mem_operE_o <= '0;
         csr_we_o <= 0;
 
         write_rd_o <= 0;
@@ -407,11 +409,10 @@ begin : id_ex_pip
         alu_oper_o <= alu_oper;
         instr_valid_o <= instr_valid_i;
 
-        mem_operE_o <= mem_operD;
         csr_we_o <= csr_we;
 
         write_rd_o <= write_rd;
-        result_srcE_o <= result_src;
+        result_srcE_o <= result_srcD;
         rd_addr_o <= rd;
 
         rs1_addr_o <= rs1;

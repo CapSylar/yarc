@@ -145,12 +145,13 @@ typedef enum logic [1:0]
     PC_CSRW
 } pc_sel_t;
 
-typedef enum logic [1:0]
+typedef enum logic [2:0]
 {
     RESULT_ALU,
     RESULT_MEM,
     RESULT_CSR,
-    RESULT_MDU
+    RESULT_MDU,
+    RESULT_SC
 } result_src_e;
 
 typedef enum logic [1:0]

@@ -1,152 +1,220 @@
-// Load Store Unit, Interract with the subsystem through Wishbone Pipeline B4
+// stage_mem1 module
+
+`default_nettype none
 
 module lsu
 import riscv_pkg::*;
 (
-    input clk_i,
-    input rstn_i,
+    input wire clk_i,
+    input wire rstn_i,
 
-    // LSU <-> Data Port
-    wishbone_if.MASTER wb_if,
+    // Load Store Unit
+    output logic lsu_req_o,
+    // read port
+    output logic [31:0] lsu_addr_o,
+    output logic lsu_we_o,
+    // write port
+    output logic [3:0] lsu_wsel_byte_o,
+    output logic [31:0] lsu_wdata_o,
 
-    // <-> LSU unit
-    input req_i,
-    input we_i,
-    input [31:0] addr_i,
-    input [3:0] wsel_byte_i,
-    input [31:0] wdata_i,
+    input wire [31:0] lsu_rdata_i,
+    input wire lsu_req_done_i,
 
-    output logic req_done_o,
-    output logic [31:0] rdata_o,
+    // from EX/MEM1
+    input wire [31:0] alu_result_i,
+    input wire [31:0] alu_oper2_i,
+    input wire mem_oper_t mem_opM_i,
+    input wire atomic_op_e atomic_opM_i,
+    input wire instr_valid_i,
+    input wire trapM_i,
 
-    output logic req_stall_o // current request needs to be held
+    // for WB stage exclusively
+    input wire write_rd_i,
+    input wire [4:0] rd_addr_i,
+
+    // MEM1/MEM2 pipeline registers
+    output logic instr_valid_o,
+    output logic write_rd_o,
+    output logic [4:0] rd_addr_o,
+    output logic [31:0] alu_result_o,
+    output logic [31:0] lsu_rdata_o,
+    output logic is_fail_scW_o,
+
+    output logic lsu_stall_m_o,
+    output logic load_misaligned_trapM_o,
+    output logic store_misaligned_trapM_o,
+    
+    input wire stallW_i,
+    input wire flushW_i
 );
 
-// count the number of pending acks that we must wait for before
-// terminating the bus cycle
-logic [1:0] ack_pending_d, ack_pending_q;
+wire [31:0] addr = lsu_addr_o;
+wire [31:0] to_write = alu_oper2_i;
+logic [3:0] wsel_byte;
+logic [31:0] wdata;
+logic is_write;
+
+// detected unaligned addresses
+wire is_half_unaligned = (mem_opM_i.mem_width == 2'b01) & (addr[0] == 1'b1);
+wire is_word_unaligned = (mem_opM_i.mem_width == 2'b10) & (|addr[1:0]);
+
+wire misaligned_trap = is_half_unaligned | is_word_unaligned;
+assign load_misaligned_trapM_o = misaligned_trap & mem_opM_i.mem_rw[1];
+assign store_misaligned_trapM_o = misaligned_trap & mem_opM_i.mem_rw[0];
+
+assign is_write = mem_opM_i.mem_rw[0];
+
+// format the write data
+always_comb
+begin
+    wsel_byte = '0;
+    wdata = '0;
+
+    case(mem_opM_i.mem_width)
+        2'b00: // byte
+        begin
+            wsel_byte = 4'b0001 << addr[1:0];
+            wdata = to_write << (addr[1:0] * 8);
+        end
+
+        2'b01: // halfword
+        begin
+            wsel_byte = 4'b0011 << (addr[1] * 2);
+            wdata = to_write << (addr[1] * 16);
+        end
+
+        2'b10: // word
+        begin
+            wsel_byte = 4'b1111;
+            wdata = to_write;
+        end
+
+        default:
+        begin end
+    endcase
+end
+
+// extract byte
+
+logic [7:0] selected_byte;
+always_comb begin
+    unique case (alu_result_i[1:0])
+        2'b00: selected_byte = (lsu_rdata_i[(8*1)-1 -:8]);
+        2'b01: selected_byte = (lsu_rdata_i[(8*2)-1 -:8]);
+        2'b10: selected_byte = (lsu_rdata_i[(8*3)-1 -:8]);
+        2'b11: selected_byte = (lsu_rdata_i[(8*4)-1 -:8]);
+        default:;
+    endcase
+end
+
+wire [31:0] extended_byte = mem_opM_i.is_load_unsigned ? 32'(selected_byte) : 32'(signed'(selected_byte));
+
+// extract halfword
+
+logic [15:0] selected_halfword;
+always_comb begin
+    unique case (alu_result_i[1])
+        1'b0: selected_halfword = (lsu_rdata_i[(16*1)-1 -:16]);
+        1'b1: selected_halfword = (lsu_rdata_i[(16*2)-1 -:16]);
+        default:;
+    endcase
+end
+
+wire [31:0] extended_halfword = mem_opM_i.is_load_unsigned ? 32'(selected_halfword) : 32'(signed'(selected_halfword));
+
+logic [31:0] rdata;
+// format the read data correctly
+always_comb
+begin : format_rdata
+    rdata = '0;
+
+    case(mem_opM_i.mem_width)
+        2'b00:
+        begin
+            rdata = extended_byte;
+        end
+        2'b01:
+        begin
+            rdata = extended_halfword;
+        end
+        2'b10:
+        begin
+            rdata = lsu_rdata_i;
+        end
+        default:;
+    endcase
+end
+
+// when not to start a memory request
+wire cannot_issue_req = trapM_i | flushW_i;
+logic is_fail_scM;
+wire valid_mem_op = mem_opM_i.mem_rw[1] | (mem_opM_i.mem_rw[0] & ~is_fail_scM);
+
+typedef enum {IDLE, WAITING_FOR_DONE} state_t;
+state_t state, next;
+
+flopr_type #(state_t, IDLE) state_flop (clk_i, rstn_i, next, state);
 
 always_comb
 begin
-    ack_pending_d = ack_pending_q;
+    next = state;
+    lsu_req_o = 1'b0;
 
-    if (wb_if.stb)
-        ack_pending_d = ack_pending_d + 1'b1;
-
-    if (wb_if.ack)
-        ack_pending_d = ack_pending_d - 1'b1;
-end
-
-always_ff @(posedge clk_i)
-begin
-    if (!rstn_i)
-        ack_pending_q <= '0;
-    else
-        ack_pending_q <= ack_pending_d;
-end
-
-logic wb_cyc;
-logic wb_stb;
-logic wb_lock;
-logic wb_we;
-logic [31:0] wb_addr;
-logic [3:0] wb_sel;
-logic [31:0] wb_wdata;
-
-assign wb_lock = '0;
-
-// wishbone master logic
-typedef enum
-{
-    IDLE,
-    BUS_REQ,
-    BUS_WAIT
-} wb_state_e;
-
-wb_state_e current, next;
-
-always_ff @(posedge clk_i)
-    if (!rstn_i) current <= IDLE;
-    else current <= next;
-
-// next state logic
-always_comb
-begin : next_state
-
-    next = current;
-    req_stall_o = '0;
-    wb_cyc = '0;
-    wb_stb = 0;
-
-    case (current)
-        IDLE:
-        begin
-            if (req_i)
-                next = BUS_REQ;
+    unique case (state)
+        IDLE: begin
+            if (valid_mem_op & !cannot_issue_req) begin
+                lsu_req_o = 1'b1;
+                next = WAITING_FOR_DONE;
+            end
         end
 
-        // actively requesting
-        BUS_REQ:
-        begin
-            wb_cyc = 1'b1;
-            wb_stb = 1'b1;
-
-            if (wb_if.stall)
-                req_stall_o = 1'b1;
-            else if (!req_i)
-                next = BUS_WAIT;
-        end
-
-        // only waiting for an ack to return
-        BUS_WAIT:
-        begin
-            wb_cyc = 1'b1;
-
-            if (req_i)
-                next = BUS_REQ;
-            else if (wb_if.ack && (ack_pending_d == '0)) // nothing left to wait for
+        WAITING_FOR_DONE: begin
+            if (lsu_req_done_i) begin
                 next = IDLE;
+            end
         end
     endcase
 end
 
-// drive the data/control out lines
-always_comb
-begin
-    wb_we = '0;
-    wb_addr = '0;
-    wb_wdata = '0;
-    wb_sel = '0;
+/*
+ * Here I am using the fact that for now lsu req never responds in the same cycle
+ */
+assign lsu_stall_m_o = lsu_req_o | (state != IDLE) & ~lsu_req_done_i;
 
-    // in this case, we simply translate the request combinationally
-    if (current == BUS_REQ)
-    begin
-        wb_we = we_i;
-        wb_addr = addr_i;
-        wb_wdata = wdata_i;
-        wb_sel = we_i ? wsel_byte_i : 4'hf;
-    end
-end
+/*
+ * Load reserved - Store conditional
+ */
 
-// drive the request done signals
-always_comb
-begin
-    req_done_o = '0;
-    rdata_o = '0;
+ lrsc lrsc_i (
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
 
-    if (wb_if.ack)
-    begin
-        req_done_o = 1'b1;
-        rdata_o = wb_if.rdata;
-    end
-end
+    .stallW_i(stallW_i),
+    .flushW_i(flushW_i),
 
-// assign signals to wishbone interface
-assign wb_if.cyc = wb_cyc;
-assign wb_if.stb = wb_stb;
-assign wb_if.we = wb_we;
-assign wb_if.addr = wb_addr[31:2];
-assign wb_if.sel = wb_sel;
-assign wb_if.wdata = wb_wdata;
+    .mem_opM_i(mem_opM_i),
+    .atomic_opM_i(atomic_opM_i),
+
+    .lsu_addr_i(lsu_addr_o),
+
+    .is_fail_scM_o(is_fail_scM),
+    .is_fail_scW_o(is_fail_scW_o)
+ );
+
+// lsu outputs
+assign lsu_addr_o = alu_result_i;
+assign lsu_wdata_o = wdata;
+assign lsu_wsel_byte_o = wsel_byte;
+assign lsu_we_o = is_write;
+
+// pipeline registers
+flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flushW_i, !stallW_i, write_rd_i, write_rd_o);
+flopenrc #(32) alu_result_reg   (clk_i, rstn_i, flushW_i, !stallW_i, alu_result_i, alu_result_o);
+flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flushW_i, !stallW_i, rdata, lsu_rdata_o);
+
+flopenrc #(5) rd_addr_reg       (clk_i, rstn_i, flushW_i, !stallW_i, rd_addr_i, rd_addr_o);
+flopenrc #(1) instr_valid_reg   (clk_i, rstn_i, flushW_i, !stallW_i, instr_valid_i, instr_valid_o);
 
 endmodule: lsu
+
+`default_nettype wire
