@@ -16,6 +16,7 @@ typedef enum logic [6:0]
     ARITH =     7'b0110011,
 
     FENCE =     7'b0001111,
+    ATOMIC =    7'b0101111,
 
     SYSTEM =    7'b1110011 // ecall, ebreak and Zicsr instructions
 } opcode_t;
@@ -103,27 +104,12 @@ typedef enum logic [1:0]
     BNJ_BRANCH
 } bnj_oper_t; // branch n jump operation
 
-typedef enum logic [3:0]
+typedef struct packed
 {
-    // MSB = 0 => load || MSB = 1 => store
-    // the 3 LSBs have the same encoding as the func3 field in the opcode
-
-    MEM_LB = 4'b0000,
-    MEM_LH = 4'b0001,
-    MEM_LW = 4'b0010,
-    MEM_LBU = 4'b0100,
-    MEM_LHU = 4'b0101,
-
-    MEM_SB = 4'b1000,
-    MEM_SH = 4'b1001,
-    MEM_SW = 4'b1010,
-
-    MEM_NOP = 4'b1111 // no operation
+    logic [1:0] mem_rw;
+    logic is_load_unsigned;
+    logic [1:0] mem_width;
 } mem_oper_t;
-
-function logic is_mem_oper_load(mem_oper_t mem_oper);
-    return !mem_oper[3];
-endfunction: is_mem_oper_load
 
 typedef enum logic [4:0]
 {
@@ -166,5 +152,12 @@ typedef enum logic [1:0]
     RESULT_CSR,
     RESULT_MDU
 } result_src_e;
+
+typedef enum logic [1:0]
+{
+    NO_ATOMIC = 2'b00,
+    ATOMIC_LR = 2'b01,
+    ATOMIC_AMO= 2'b10
+} atomic_op_e;
 
 endpackage: riscv_pkg

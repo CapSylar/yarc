@@ -16,7 +16,7 @@ import riscv_pkg::*;
     input alu_oper_t alu_oper_i,
     input bnj_oper_t bnj_oper_i,
     input instr_valid_i,
-    input mem_oper_t mem_oper_i,
+    input var mem_oper_t mem_operE_i,
 
     output logic [31:0] rs1_forwarded_value_o,
     output logic [31:0] rs2_forwarded_value_o,
@@ -34,7 +34,7 @@ import riscv_pkg::*;
 
     output logic [31:0] alu_result_o, // always contains a mem address or the rd value
     output logic [31:0] alu_oper2_o,
-    output mem_oper_t mem_oper_o,
+    output mem_oper_t mem_operM_o,
     output logic [31:0] pc_o,
     output logic instr_valid_o,
 
@@ -231,7 +231,7 @@ always_ff @(posedge clk_i)
 begin : ex_mem_pip
     if (!rstn_i || flush_i)
     begin
-        mem_oper_o <= MEM_NOP;
+        mem_operM_o <= '0;
         instr_valid_o <= '0;
         write_rd_o <= 0;
     end
@@ -242,7 +242,7 @@ begin : ex_mem_pip
         // it is really the value to write to rd if any
         alu_result_o <= alu_result;
         alu_oper2_o <= rs2ValueE;
-        mem_oper_o <= mem_oper_i;
+        mem_operM_o <= mem_operE_i;
         pc_o <= pc_i;
         instr_valid_o <= instr_valid_i;
 

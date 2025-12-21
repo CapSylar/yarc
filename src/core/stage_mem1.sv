@@ -23,7 +23,7 @@ import riscv_pkg::*;
     // from EX/MEM1
     input wire [31:0] alu_result_i,
     input wire [31:0] alu_oper2_i,
-    input wire mem_oper_t mem_oper_i,
+    input wire mem_oper_t mem_operM_i,
     input wire instr_valid_i,
     input wire trapM_i,
 
@@ -33,12 +33,10 @@ import riscv_pkg::*;
 
     // MEM1/MEM2 pipeline registers
     output logic instr_valid_o,
-    // output logic is_csr_o,
     output logic write_rd_o,
     output logic [4:0] rd_addr_o,
     output logic [31:0] alu_result_o,
     output logic [31:0] lsu_rdata_o,
-    // output mem_oper_t mem_oper_o,
 
     output logic lsu_stall_m_o,
     output logic load_misaligned_trapM_o,
@@ -55,38 +53,36 @@ logic [31:0] wdata;
 logic is_write;
 
 // detected unaligned addresses
-wire is_half_unaligned = (mem_oper_i[1:0] == 2'b01) & (addr[0] == 1'b1);
-wire is_word_unaligned = (mem_oper_i[1:0] == 2'b10) & (|addr[1:0]);
+wire is_half_unaligned = (mem_operM_i.mem_width == 2'b01) & (addr[0] == 1'b1);
+wire is_word_unaligned = (mem_operM_i.mem_width == 2'b10) & (|addr[1:0]);
 
 wire misaligned_trap = is_half_unaligned | is_word_unaligned;
-assign load_misaligned_trapM_o = misaligned_trap & ~mem_oper_i[3];
-assign store_misaligned_trapM_o = misaligned_trap & mem_oper_i[3];
+assign load_misaligned_trapM_o = misaligned_trap & mem_operM_i.mem_rw[1];
+assign store_misaligned_trapM_o = misaligned_trap & mem_operM_i.mem_rw[0];
+
+assign is_write = mem_operM_i.mem_rw[0];
 
 // format the write data
 always_comb
 begin
     wsel_byte = '0;
     wdata = '0;
-    is_write = '0;
 
-    case(mem_oper_i)
-        MEM_SB:
+    case(mem_operM_i.mem_width)
+        2'b00: // byte
         begin
-            is_write = 1'b1;
             wsel_byte = 4'b0001 << addr[1:0];
             wdata = to_write << (addr[1:0] * 8);
         end
 
-        MEM_SH:
+        2'b01: // halfword
         begin
-            is_write = 1'b1;
             wsel_byte = 4'b0011 << (addr[1] * 2);
             wdata = to_write << (addr[1] * 16);
         end
 
-        MEM_SW:
+        2'b10: // word
         begin
-            is_write = 1'b1;
             wsel_byte = 4'b1111;
             wdata = to_write;
         end
@@ -96,47 +92,50 @@ begin
     endcase
 end
 
+// extract byte
+
+logic [7:0] selected_byte;
+always_comb begin
+    unique case (alu_result_i[1:0])
+        2'b00: selected_byte = (lsu_rdata_i[(8*1)-1 -:8]);
+        2'b01: selected_byte = (lsu_rdata_i[(8*2)-1 -:8]);
+        2'b10: selected_byte = (lsu_rdata_i[(8*3)-1 -:8]);
+        2'b11: selected_byte = (lsu_rdata_i[(8*4)-1 -:8]);
+        default:;
+    endcase
+end
+
+wire [31:0] extended_byte = mem_operM_i.is_load_unsigned ? 32'(selected_byte) : 32'(signed'(selected_byte));
+
+// extract halfword
+
+logic [15:0] selected_halfword;
+always_comb begin
+    unique case (alu_result_i[1])
+        1'b0: selected_halfword = (lsu_rdata_i[(16*1)-1 -:16]);
+        1'b1: selected_halfword = (lsu_rdata_i[(16*2)-1 -:16]);
+        default:;
+    endcase
+end
+
+wire [31:0] extended_halfword = mem_operM_i.is_load_unsigned ? 32'(selected_halfword) : 32'(signed'(selected_halfword));
+
 logic [31:0] rdata;
 // format the read data correctly
 always_comb
 begin : format_rdata
     rdata = '0;
 
-    case(mem_oper_i)
-        MEM_LB:
+    case(mem_operM_i.mem_width)
+        2'b00:
         begin
-            case (alu_result_i[1:0])
-                2'b00: rdata = 32'(signed'(lsu_rdata_i[(8*1)-1 -:8]));
-                2'b01: rdata = 32'(signed'(lsu_rdata_i[(8*2)-1 -:8]));
-                2'b10: rdata = 32'(signed'(lsu_rdata_i[(8*3)-1 -:8]));
-                2'b11: rdata = 32'(signed'(lsu_rdata_i[(8*4)-1 -:8]));
-            endcase
+            rdata = extended_byte;
         end
-        MEM_LBU:
+        2'b01:
         begin
-            case (alu_result_i[1:0])
-                2'b00: rdata = 32'(lsu_rdata_i[(8*1)-1 -:8]);
-                2'b01: rdata = 32'(lsu_rdata_i[(8*2)-1 -:8]);
-                2'b10: rdata = 32'(lsu_rdata_i[(8*3)-1 -:8]);
-                2'b11: rdata = 32'(lsu_rdata_i[(8*4)-1 -:8]);
-            endcase 
+            rdata = extended_halfword;
         end
-        MEM_LH:
-        begin
-            case (alu_result_i[1])
-                1'b0: rdata = 32'(signed'(lsu_rdata_i[(16*1)-1 -:16]));
-                1'b1: rdata = 32'(signed'(lsu_rdata_i[(16*2)-1 -:16]));
-            endcase
-        end
-
-        MEM_LHU:
-        begin
-            case (alu_result_i[1])
-                1'b0: rdata = 32'(lsu_rdata_i[(16*1)-1 -:16]);
-                1'b1: rdata = 32'(lsu_rdata_i[(16*2)-1 -:16]);
-            endcase
-        end
-        MEM_LW:
+        2'b10:
         begin
             rdata = lsu_rdata_i;
         end
@@ -159,7 +158,7 @@ begin
 
     unique case (state)
         IDLE: begin
-            if (mem_oper_i != MEM_NOP & !cannot_issue_req) begin
+            if (|mem_operM_i.mem_rw & !cannot_issue_req) begin
                 lsu_req_o = 1'b1;
                 next = WAITING_FOR_DONE;
             end

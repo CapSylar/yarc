@@ -17,7 +17,7 @@ import csr_pkg::*;
     input [4:0] rs1E_i,
     input [4:0] rs2E_i,
     input [4:0] rdE_i,
-    input mem_oper_t id_ex_mem_oper_i,
+    input var mem_oper_t mem_operE_i,
     input is_muldiv_instrE_i,
 
     // EX stage
@@ -127,7 +127,7 @@ flopenrc #(1) execute_stage_pipe (clk_i, rstn_i, flushE_o, !stallE_o, csr_readD_
 
 // handle use after load hazard
 wire match_d_e = ((rs1D_i == rdE_i) | (rs2D_i == rdE_i)) & (rdE_i != 0);
-wire mem_load_use_hzrd = is_mem_oper_load(id_ex_mem_oper_i) & match_d_e;
+wire mem_load_use_hzrd = mem_operE_i.mem_rw[1] & match_d_e;
 wire csr_load_use_hzrd = csr_readE & match_d_e;
 wire mul_div_use_hzrd = is_muldiv_instrE_i & match_d_e;
 

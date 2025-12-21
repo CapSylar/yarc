@@ -51,7 +51,7 @@ import csr_pkg::*;
     output logic illegal_instrD_o,
 
     // for the MEM stage
-    output mem_oper_t mem_oper_o,
+    output mem_oper_t mem_operE_o,
     // output logic [11:0] csr_waddr_o,
     output logic csr_we_o,
 
@@ -72,7 +72,6 @@ opcode_t opcode;
 logic [4:0] rs1, rs2, rd;
 logic [2:0] func3;
 logic [6:0] func7;
-logic [11:0] csr_addr;
 
 assign opcode = opcode_t'(instr_i[6:0]);
 assign rd = instr_i[11:7];
@@ -80,7 +79,6 @@ assign rs1 = instr_i[19:15];
 assign rs2 = instr_i[24:20];
 assign func3 = instr_i[14:12];
 assign func7 = instr_i[31:25];
-assign csr_addr = instr_i[31:20];
 
 wire is_func7_zero = (func7 == '0);
 wire is_func7_sub_sra = (func7 == 7'b0100_000);
@@ -94,6 +92,18 @@ wire is_imm_arith_shift = ((func3 == 3'b001) & is_func7_zero) |
                          ((func3 == 3'b101) & (is_func7_zero | is_func7_sub_sra));
 
 wire is_imm_arith = is_imm_arith_no_shift | is_imm_arith_shift;
+
+wire [4:0] upper_5 = instr_i[31:27];
+// or all the possible valid 5 MSB combination for AMO instructions
+wire is_valid_amo = (upper_5 == 5'b00001) |
+                    (upper_5 == 5'b00000) |
+                    (upper_5 == 5'b00100) |
+                    (upper_5 == 5'b01100) |
+                    (upper_5 == 5'b01000) |
+                    (upper_5 == 5'b10000) |
+                    (upper_5 == 5'b10100) |
+                    (upper_5 == 5'b11000) |
+                    (upper_5 == 5'b11100);
 
 // immediates
 logic [31:0] imm_i, imm_s, imm_b, imm_u, imm_j, imm_csr;
@@ -114,8 +124,9 @@ alu_oper1_src_t alu_oper1_src;
 alu_oper2_src_t alu_oper2_src;
 
 bnj_oper_t bnj_oper;
-mem_oper_t mem_oper; // memory operation if any
+mem_oper_t mem_operD; // memory operation if any
 
+atomic_op_e atomic_opD;
 logic is_muldiv_instrD;
 exc_t sys_instrD;
 logic csr_re;
@@ -132,12 +143,18 @@ begin : main_decode
     result_src = RESULT_ALU;
     curr_imm = '0;
     bnj_oper = BNJ_NO; // no branch
-    mem_oper = MEM_NOP;
+
+    mem_operD = '{
+        mem_rw: 2'b00,
+        is_load_unsigned: func3[2],
+        mem_width: func3[1:0]
+    };
 
     sys_instrD = NO_SYS;
     csr_re = '0;
     csr_we = '0;
 
+    atomic_opD = NO_ATOMIC;
     is_muldiv_instrD = 1'b0;
     illegal_instrD_o = 1'b0;
 
@@ -197,7 +214,7 @@ begin : main_decode
                 write_rd = 1;
                 result_src = RESULT_MEM;
 
-                mem_oper = mem_oper_t'({1'b0, func3});
+                mem_operD.mem_rw = 2'b10;
             end
 
             STORE:
@@ -205,7 +222,7 @@ begin : main_decode
                 alu_oper2_src = OPER2_IMM;
                 curr_imm = imm_s;
 
-                mem_oper = mem_oper_t'({1'b1, func3});
+                mem_operD.mem_rw = 2'b01;
             end
 
             ARITH:
@@ -264,6 +281,29 @@ begin : main_decode
                     // In CSRRSI/CI: If uimm = Zero, the csr is not written any write side-effects will not be triggered
                     csr_we = ((rs1 == '0 && (system_opc_t'(func3) == CSRRS || system_opc_t'(func3) == CSRRS)) ||
                         (imm_csr == '0 && (system_opc_t'(func3) == CSRRSI || system_opc_t'(func3) == CSRRCI))) ? 1'b0 : 1'b1;
+                end
+            end
+
+            ATOMIC: begin
+                alu_oper2_src = OPER2_ZERO;
+
+                // LR.D
+                if ((instr_i[24:20] == 5'b0) & (upper_5 == 5'b00010)) begin
+                    atomic_opD = ATOMIC_LR;
+
+                    write_rd = 1'b1;
+                    result_src = RESULT_MEM;
+
+                    mem_operD.mem_rw = 2'b10;
+                end else if ((instr_i == 5'b00011)) begin  // SC.D
+                    atomic_opD = ATOMIC_LR;
+
+                    mem_operD.mem_rw = 2'b01;
+                end else if (is_valid_amo) begin
+                    mem_operD.mem_rw = 2'b11;
+                    atomic_opD = ATOMIC_AMO;
+                end else begin
+                    illegal_instrD_o = 1'b1;
                 end
             end
 
@@ -342,8 +382,7 @@ begin : id_ex_pip
         alu_oper_o <= ALU_ADD;
         instr_valid_o <= '0;
 
-        mem_oper_o <= MEM_NOP;
-        // csr_waddr_o <= 0;
+        mem_operE_o <= '0;
         csr_we_o <= 0;
 
         write_rd_o <= 0;
@@ -368,8 +407,7 @@ begin : id_ex_pip
         alu_oper_o <= alu_oper;
         instr_valid_o <= instr_valid_i;
 
-        mem_oper_o <= mem_oper;
-        // csr_waddr_o <= csr_addr;
+        mem_operE_o <= mem_operD;
         csr_we_o <= csr_we;
 
         write_rd_o <= write_rd;

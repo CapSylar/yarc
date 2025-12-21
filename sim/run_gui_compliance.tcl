@@ -127,14 +127,10 @@ add wave -color Gold ${CORE}/decode_i/pc_o;
 add wave -color Gold ${CORE}/decode_i/rs1_data_o;
 add wave -color Gold ${CORE}/decode_i/rs2_data_o;
 add wave -color Gold ${CORE}/decode_i/imm_o;
-# add wave -color Gold ${CORE}/decode_i/csr_rdata_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper1_src_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper2_src_o;
 add wave -color Gold ${CORE}/decode_i/bnj_oper_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper_o;
-add wave -color Gold ${CORE}/decode_i/mem_oper_o;
-# add wave -color Gold ${CORE}/decode_i/csr_waddr_o;
-# add wave -color Gold ${CORE}/decode_i/csr_we_o;
 add wave -color Gold ${CORE}/decode_i/write_rd_o;
 add wave -color Gold ${CORE}/decode_i/rd_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs1_addr_o;
@@ -151,8 +147,6 @@ add wave ${CORE}/execute_i/alu_oper2_src_i;
 add wave ${CORE}/execute_i/alu_oper_i;
 add wave ${CORE}/execute_i/bnj_oper_i;
 add wave ${CORE}/execute_i/instr_valid_i;
-
-add wave ${CORE}/execute_i/mem_oper_i;
 
 add wave ${CORE}/execute_i/write_rd_i;
 add wave ${CORE}/execute_i/rd_addr_i;
@@ -171,7 +165,6 @@ add wave -color Turquoise ${CORE}/execute_i/forward_mem_wb_data_i;
 
 add wave -color Gold ${CORE}/execute_i/alu_result_o;
 add wave -color Gold ${CORE}/execute_i/alu_oper2_o;
-add wave -color Gold ${CORE}/execute_i/mem_oper_o;
 add wave -color Gold ${CORE}/execute_i/pc_o;
 add wave -color Gold ${CORE}/execute_i/instr_valid_o;
 
@@ -198,7 +191,6 @@ add wave ${CORE}/stage_mem1_i/lsu_wdata_o;
 
 add wave ${CORE}/stage_mem1_i/alu_result_i;
 add wave ${CORE}/stage_mem1_i/alu_oper2_i;
-add wave ${CORE}/stage_mem1_i/mem_oper_i;
 add wave ${CORE}/stage_mem1_i/write_rd_i;
 add wave ${CORE}/stage_mem1_i/rd_addr_i;
 
@@ -257,17 +249,14 @@ add wave -color Turquoise ${CORE}/controller_i/forward_rs1_o;
 add wave -color Turquoise ${CORE}/controller_i/forward_rs2_o;
 add wave -color Turquoise ${CORE}/controller_i/forward_ex_mem_data_o;
 add wave -color Turquoise ${CORE}/controller_i/forward_mem_wb_data_o;
-add wave -color Turquoise ${CORE}/controller_i/id_ex_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/id_ex_stall_o;
-add wave -color Turquoise ${CORE}/controller_i/if_stall_o;
-add wave -color Turquoise ${CORE}/controller_i/if_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/ex_mem_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/ex_mem_stall_o;
-add wave -color Turquoise ${CORE}/controller_i/mem_wb_flush_o;
-add wave -color Turquoise ${CORE}/controller_i/mem_wb_stall_o;
-
-add wave ${CORE}/controller_i/state;
-add wave ${CORE}/controller_i/next;
+# add wave -color Turquoise ${CORE}/controller_i/id_ex_flush_o;
+# add wave -color Turquoise ${CORE}/controller_i/id_ex_stall_o;
+# add wave -color Turquoise ${CORE}/controller_i/if_stall_o;
+# add wave -color Turquoise ${CORE}/controller_i/if_flush_o;
+# add wave -color Turquoise ${CORE}/controller_i/ex_mem_flush_o;
+# add wave -color Turquoise ${CORE}/controller_i/ex_mem_stall_o;
+# add wave -color Turquoise ${CORE}/controller_i/mem_wb_flush_o;
+# add wave -color Turquoise ${CORE}/controller_i/mem_wb_stall_o;
 
 add wave ${CORE}/controller_i/new_pc_en_o;
 add wave ${CORE}/controller_i/pc_sel_o;

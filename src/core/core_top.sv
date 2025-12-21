@@ -59,7 +59,7 @@ logic instr_validE;
 logic is_muldiv_instrE;
 logic illegal_instrD;
 alu_oper_t id_ex_alu_oper;
-mem_oper_t id_ex_mem_oper;
+mem_oper_t mem_operE;
 logic csr_writeE;
 logic id_ex_write_rd;
 result_src_e result_srcE, result_srcW;
@@ -77,7 +77,7 @@ logic [31:0] rs1_forwarded_valueE;
 logic [31:0] rs2_forwarded_valueE;
 logic [31:0] alu_resultM;
 logic [31:0] ex_mem1_alu_oper2;
-mem_oper_t ex_mem1_mem_oper;
+mem_oper_t mem_operM;
 logic ex_mem1_write_rd;
 logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
@@ -306,7 +306,7 @@ decode decode_i
     .illegal_instrD_o(illegal_instrD),
 
     // for the MEM stage
-    .mem_oper_o(id_ex_mem_oper),
+    .mem_operE_o(mem_operE),
     // .csr_waddr_o(id_ex_csr_waddr),
     .csr_we_o(csr_writeE),
 
@@ -338,7 +338,7 @@ execute execute_i
     .alu_oper_i(id_ex_alu_oper),
     .bnj_oper_i(id_ex_bnj_oper),
     .instr_valid_i(instr_validE),
-    .mem_oper_i(id_ex_mem_oper),
+    .mem_operE_i(mem_operE),
 
     .rs1_forwarded_value_o(rs1_forwarded_valueE),
     .rs2_forwarded_value_o(rs2_forwarded_valueE),
@@ -356,7 +356,7 @@ execute execute_i
 
     .alu_result_o(alu_resultM),
     .alu_oper2_o(ex_mem1_alu_oper2),
-    .mem_oper_o(ex_mem1_mem_oper),
+    .mem_operM_o(mem_operM),
     .pc_o(ex_mem1_pc),
     .instr_valid_o(instr_validM),
 
@@ -420,7 +420,7 @@ stage_mem1 stage_mem1_i
     // from EX/MEM
     .alu_result_i(alu_resultM),
     .alu_oper2_i(ex_mem1_alu_oper2),
-    .mem_oper_i(ex_mem1_mem_oper),
+    .mem_operM_i(mem_operM),
 
     .instr_valid_i(instr_validM),
     .trapM_i(trapM),
@@ -504,7 +504,7 @@ controller controller_i
     .rs1E_i(id_ex_rs1_addr),
     .rs2E_i(id_ex_rs2_addr),
     .rdE_i(id_ex_rd_addr),
-    .id_ex_mem_oper_i(id_ex_mem_oper),
+    .mem_operE_i(mem_operE),
     .is_muldiv_instrE_i(is_muldiv_instrE),
 
     // from EX stage
