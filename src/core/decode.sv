@@ -273,8 +273,9 @@ begin : main_decode
                     result_srcD = RESULT_CSR;
                     // determine if csr will be read
                     // In CSRRW*: if rd = Zero, the csr is not read and any read side-effects will not be triggered
-                    csr_re = ((system_opc_t'(func3) == CSRRW ||
-                        system_opc_t'(func3) == CSRRWI) && rd == '0) ? 1'b0 : 1'b1;
+                    // csr_re = ((system_opc_t'(func3) == CSRRW ||
+                        // system_opc_t'(func3) == CSRRWI) && rd == '0) ? 1'b0 : 1'b1;
+                    csr_re = 1'b1; // doesn't matter since no CSRs have side effects, + is crucial for illegalcsr access in cs_registers
 
                     // determine is csr will be written
                     // In CSRRS/C: If rs1 = Zero, the csr is not written and any write side-effect will not be triggered

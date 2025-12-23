@@ -156,13 +156,12 @@ begin: if_steering
     end else if (mretM_i) begin
         new_pc_en_o = 1'b1;
         pc_sel_o = PC_MEPC;
-    end else if (ex_new_pc_en_i) begin // branch or jump taken
-        new_pc_en_o = 1'b1; 
     end else if (csr_writeM_i) begin
-
         // any CSR write causes a pipeline flush
         new_pc_en_o = 1'b1;
         pc_sel_o = PC_CSRW;
+    end else if (ex_new_pc_en_i) begin // branch or jump taken
+        new_pc_en_o = 1'b1; 
     end
 end
 

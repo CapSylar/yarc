@@ -13,6 +13,8 @@ import csr_pkg::*;
     input wire stallM_i,
     input wire flushM_i,
 
+    input wire stallW_i,
+
     input wire instr_validM_i,
 
     input wire csr_readM_i,
@@ -78,7 +80,7 @@ always_comb begin
 end
 
 assign csr_addressM = instructionM_i[31:20];
-wire csr_write_gatedM = csr_writeM_i & ~stallM_i;
+wire csr_write_gatedM = csr_writeM_i & ~stallW_i;
 
 logic illegal_instrE, illegal_instrM;
 logic illegal_csr_accessM;
@@ -177,6 +179,7 @@ cs_registers cs_registers_i
 
     // write port
     .csr_we_i(csr_write_gatedM),
+    .csr_we_ungated_i(csr_writeM_i),
     .csr_wdata_i(csr_to_writeM),
 
     // output some cs registers

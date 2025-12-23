@@ -234,6 +234,8 @@ privileged privileged_i
     .stallM_i(stallM),
     .flushM_i(flushM),
 
+    .stallW_i(stallW),
+
     .instr_validM_i(instr_validM),
 
     .csr_readM_i(csr_readM),
@@ -365,8 +367,8 @@ execute execute_i
     .rs1ValueM_o(rs1ValueM),
     
     // feedback into the pipeline register
-    .stall_i(stallM), // keep the same content in the registers
-    .flush_i(flushM), // zero the register contents
+    .stallM_i(stallM), // keep the same content in the registers
+    .flushM_i(flushM), // zero the register contents
 
     .alu_result_o(alu_resultM),
     .alu_oper2_o(ex_mem1_alu_oper2),

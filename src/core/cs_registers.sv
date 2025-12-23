@@ -14,6 +14,7 @@ import csr_pkg::*;
 
     // write port
     input wire csr_we_i,
+    input wire csr_we_ungated_i,
     input wire [31:0] csr_wdata_i,
 
     // output some cs registers
@@ -292,67 +293,63 @@ always_comb begin: csr_read
     csr_rdata = '0;
     illegal_csr_read = 1'b0;
 
-    if (csr_re_i)
-    begin
-        unique case (csr_addr)
-            CSR_MISA: csr_rdata = misa_q;
-            CSR_MVENDORID: csr_rdata = mvendorid_q;
-            CSR_MHARTID: csr_rdata = MHART_ID;
-            CSR_MIMPID: csr_rdata = mimpid_q;
+    unique case (csr_addr)
+        CSR_MISA: csr_rdata = misa_q;
+        CSR_MVENDORID: csr_rdata = mvendorid_q;
+        CSR_MHARTID: csr_rdata = MHART_ID;
+        CSR_MIMPID: csr_rdata = mimpid_q;
 
-            CSR_MSCRATCH: csr_rdata = mscratch_q;
-            CSR_MSTATUS:
-            begin
-                csr_rdata[CSR_MSTATUS_MIE_BIT] = mstatus_q.mie;
-                csr_rdata[CSR_MSTATUS_MPIE_BIT] = mstatus_q.mpie;
-                csr_rdata[CSR_MSTATUS_MPP_BIT_HIGH:CSR_MSTATUS_MPP_BIT_LOW] = mstatus_q.mpp;
-                csr_rdata[CSR_MSTATUS_MPRV_BIT] = mstatus_q.mprv;
-            end
-            CSR_MSTATUSH: csr_rdata = '0;
-            CSR_MTVEC: csr_rdata = mtvec_q;
-            CSR_MTVAL: csr_rdata = mtval_q;
-            CSR_MEPC: csr_rdata = mepc_q;
-            CSR_MIE:
-            begin
-                csr_rdata[CSR_MSI_BIT] = mie_q.m_software;
-                csr_rdata[CSR_MTI_BIT] = mie_q.m_timer;
-                csr_rdata[CSR_MEI_BIT] = mie_q.m_external;
-            end
-            CSR_MIP:
-            begin
-                csr_rdata[CSR_MSI_BIT] = mip_d.m_software;
-                csr_rdata[CSR_MTI_BIT] = mip_d.m_timer;
-                csr_rdata[CSR_MEI_BIT] = mip_d.m_external;
-            end
-            CSR_MCAUSE:
-            begin
-                csr_rdata[CSR_MCAUSE_IRQ_BIT] = mcause_q.irq;
-                csr_rdata[CSR_MCAUSE_CODE_BIT_HIGH:CSR_MCAUSE_CODE_BIT_LOW] = mcause_q.trap_code;
-            end
-            CSR_MCOUNTINHIBIT: csr_rdata = mcountinhibit_q;
-            CSR_MCOUNTEREN: csr_rdata = '0;
+        CSR_MSCRATCH: csr_rdata = mscratch_q;
+        CSR_MSTATUS:
+        begin
+            csr_rdata[CSR_MSTATUS_MIE_BIT] = mstatus_q.mie;
+            csr_rdata[CSR_MSTATUS_MPIE_BIT] = mstatus_q.mpie;
+            csr_rdata[CSR_MSTATUS_MPP_BIT_HIGH:CSR_MSTATUS_MPP_BIT_LOW] = mstatus_q.mpp;
+            csr_rdata[CSR_MSTATUS_MPRV_BIT] = mstatus_q.mprv;
+        end
+        CSR_MSTATUSH: csr_rdata = '0;
+        CSR_MTVEC: csr_rdata = mtvec_q;
+        CSR_MTVAL: csr_rdata = mtval_q;
+        CSR_MEPC: csr_rdata = mepc_q;
+        CSR_MIE:
+        begin
+            csr_rdata[CSR_MSI_BIT] = mie_q.m_software;
+            csr_rdata[CSR_MTI_BIT] = mie_q.m_timer;
+            csr_rdata[CSR_MEI_BIT] = mie_q.m_external;
+        end
+        CSR_MIP:
+        begin
+            csr_rdata[CSR_MSI_BIT] = mip_d.m_software;
+            csr_rdata[CSR_MTI_BIT] = mip_d.m_timer;
+            csr_rdata[CSR_MEI_BIT] = mip_d.m_external;
+        end
+        CSR_MCAUSE:
+        begin
+            csr_rdata[CSR_MCAUSE_IRQ_BIT] = mcause_q.irq;
+            csr_rdata[CSR_MCAUSE_CODE_BIT_HIGH:CSR_MCAUSE_CODE_BIT_LOW] = mcause_q.trap_code;
+        end
+        CSR_MCOUNTINHIBIT: csr_rdata = mcountinhibit_q;
+        CSR_MCOUNTEREN: csr_rdata = '0;
 
-            // Performance Counters
-            CSR_MCYCLE, CSR_MINSTRET: // lower half
-            begin
-                csr_rdata = mhpmcounter[mhpmcounter_idx][31:0];
-            end
+        // Performance Counters
+        CSR_MCYCLE, CSR_MINSTRET: // lower half
+        begin
+            csr_rdata = mhpmcounter[mhpmcounter_idx][31:0];
+        end
 
-            CSR_MCYCLEH, CSR_MINSTRETH: // upper half
-            begin
-                csr_rdata = mhpmcounter[mhpmcounter_idx][63:32];
-            end
-            default: illegal_csr_read = 1'b1;
-        endcase
-    end
+        CSR_MCYCLEH, CSR_MINSTRETH: // upper half
+        begin
+            csr_rdata = mhpmcounter[mhpmcounter_idx][63:32];
+        end
+        default: illegal_csr_read = 1'b1;
+    endcase
 end
 
-logic illegal_csr_write;
+wire illegal_csr_write = (csr_addr == CSR_MISA) | (csr_addr == CSR_MVENDORID) | (csr_addr == CSR_MHARTID) | (csr_addr == CSR_MIMPID);
 
 // write logic
 always_comb begin: csr_write
 
-    illegal_csr_write = 1'b0;
     current_plvl_d = current_plvl_q;
 
     mscratch_we = 1'b0;
@@ -386,13 +383,6 @@ always_comb begin: csr_write
     if (csr_we_i)
     begin
         unique case (csr_addr)
-            CSR_MISA,
-            CSR_MVENDORID,
-            CSR_MHARTID,
-            CSR_MIMPID: begin
-                illegal_csr_write = 1'b1;
-            end
-
             CSR_MSCRATCH: mscratch_we = 1'b1;
             CSR_MSTATUS:
             begin
@@ -404,7 +394,6 @@ always_comb begin: csr_write
                     mprv: csr_wdata_i[CSR_MSTATUS_MPRV_BIT]
                 };
 
-                // TODO: illegal values ?
             end
             CSR_MTVEC:
             begin
@@ -438,7 +427,6 @@ always_comb begin: csr_write
                     trap_code: csr_wdata_i[CSR_MCAUSE_CODE_BIT_HIGH:CSR_MCAUSE_CODE_BIT_LOW]
                 };
 
-                // TODO: illegal values
             end
             CSR_MCOUNTINHIBIT:
             begin
@@ -456,7 +444,12 @@ always_comb begin: csr_write
             begin
                 mhpmcounterh_we[mhpmcounter_idx] = 1'b1;
             end
-            default: illegal_csr_write = 1'b1;
+
+            /*
+             * no need to detect non-matching entries since is csr_we is 1
+             * then csr_re is 1 and we do the detection in the other case statement
+             */
+            default;
         endcase
     end
 
@@ -510,6 +503,6 @@ assign csr_mstatus_o = mstatus_q;
 assign current_plvl_o = current_plvl_q;
 assign irq_pending_o = mip_d & mie_q;
 
-assign illegal_csr_accessM_o = illegal_csr_read | illegal_csr_write;
+assign illegal_csr_accessM_o = (illegal_csr_read & csr_re_i) | (illegal_csr_write & csr_we_ungated_i);
 
 endmodule: cs_registers

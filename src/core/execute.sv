@@ -28,8 +28,8 @@ import riscv_pkg::*;
     output logic [31:0] rs1ValueM_o,
 
     // feedback into the pipeline registers
-    input stall_i,
-    input flush_i,
+    input stallM_i,
+    input flushM_i,
 
     output logic [31:0] alu_result_o, // always contains a mem address or the rd value
     output logic [31:0] alu_oper2_o,
@@ -222,17 +222,17 @@ begin
     endcase
 end
 
-flopenrc #(32) rs1ValueD_pipe (clk_i, rstn_i, flush_i, !stall_i, rs1ValueE, rs1ValueM_o);
+flopenrc #(32) rs1ValueD_pipe (clk_i, rstn_i, flushM_i, !stallM_i, rs1ValueE, rs1ValueM_o);
 
 // pipeline registers and outputs
 always_ff @(posedge clk_i)
 begin : ex_mem_pip
-    if (!rstn_i || flush_i)
+    if (!rstn_i || flushM_i)
     begin
         instr_valid_o <= '0;
         write_rd_o <= 0;
     end
-    else if (!stall_i)
+    else if (!stallM_i)
     begin
         // TODO: rename alu_result_o
         // since it doesn't really reflect alu_result
@@ -247,7 +247,12 @@ begin : ex_mem_pip
     end
 end
 
-assign new_pc_en_o = new_pc_en & ~(flush_i | stall_i);
+/*
+ * we used stallM instead of stallE because otherwise a logic loop would be created
+ * this works because the only thing that can really stall a branch is stallM 
+ */
+assign new_pc_en_o = new_pc_en & ~stallM_i;
+
 assign rs1_forwarded_value_o = rs1ValueE;
 assign rs2_forwarded_value_o = rs2ValueE;
 

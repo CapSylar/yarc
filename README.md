@@ -21,17 +21,19 @@ The core follows the standard 5-stage pipelined model.
 ## Supported Extensions and Features
 
 - [X] Zicsr
-- [ ] M(multiplication/division)
-- [ ] Atomics
+- [X] M(multiplication/division)
+- [X] Atomics
 - [ ] Debug Module
-- [ ] MMU
+- [ ] S mode and MMU
 
 ## Milestones on the way to Boot Linux
 
 - [X] rv32ui tests ok
-- [ ] rv32mi tests ok
-- [ ] Implement M extension
-- [ ] Add atomics
+- [X] rv32mi tests ok
+- [X] rv32um tests ok
+- [X] rv32ua tests ok
+- [X] Implement M extension
+- [X] Implement A extension
 - [ ] Attempt to boot OpenSBI
 
 ## FPGA Synthesis
