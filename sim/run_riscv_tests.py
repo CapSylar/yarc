@@ -81,7 +81,7 @@ def run_tests(argv):
             spikesig_file = f"./temp/{filename}_spikesig.txt"
             spike_log = f"./temp/{filename}_spike.log"
 
-            spike_run_command = f"spike --isa=RV32I -l --log={spike_log} +signature={spikesig_file} --signature={spikesig_file} {testfile}"
+            spike_run_command = f"spike --isa=RV32IMA -l --log={spike_log} +signature={spikesig_file} --signature={spikesig_file} {testfile}"
             
             if dump:
                 print(f"spike run command {colored(spike_run_command,'yellow')}")

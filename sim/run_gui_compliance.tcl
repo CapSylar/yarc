@@ -211,6 +211,8 @@ add wave -color Gold ${CORE}/lsu_i/rd_addr_o;
 add wave -color Gold ${CORE}/lsu_i/alu_result_o;
 
 add wave ${CORE}/lsu_i/*;
+add wave ${CORE}/lsu_i/lrsc_i/*;
+add wave ${CORE}/lsu_i/amoalu_i/*;
 
 # ---------------------------------------------------------
 add wave -group {LSU WISHBONE} -color Gold ${CORE}/wishbone_lsu_driver_i/wb_if/*;
@@ -222,7 +224,6 @@ add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wsel_byte_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wdata_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_done_o;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/rdata_o;
-add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_stall_o;
 
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/current;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/next;
@@ -267,6 +268,9 @@ add wave -divider {PRIVILEGED}
 add wave ${CORE}/privileged_i/*;
 
 add wave ${CORE}/*;
+
+add wave ${TOP}/mem_i/*;
+add wave ${TOP}/mem_i/mem;
 
 # ---------------------------------------------------------
 # disable creation of the transcript file

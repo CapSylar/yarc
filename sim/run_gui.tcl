@@ -50,11 +50,9 @@ set CS_REGISTERS_PATH ${CORE}/privileged_i/cs_registers_i;
 
 add wave -divider {CS REGISTERS}
 add wave ${CS_REGISTERS_PATH}/csr_re_i;
-add wave ${CS_REGISTERS_PATH}/csr_raddr;
+add wave ${CS_REGISTERS_PATH}/csr_addr;
 add wave ${CS_REGISTERS_PATH}/csr_rdata_o;
-
 add wave ${CS_REGISTERS_PATH}/csr_we_i;
-add wave ${CS_REGISTERS_PATH}/csr_waddr;
 add wave ${CS_REGISTERS_PATH}/csr_wdata_i;
 
 add wave ${CS_REGISTERS_PATH}/csr_mepc_o;
@@ -215,7 +213,6 @@ add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wsel_byte_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wdata_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_done_o;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/rdata_o;
-add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_stall_o;
 
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/current;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/next;

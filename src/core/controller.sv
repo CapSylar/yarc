@@ -19,6 +19,7 @@ import csr_pkg::*;
     input [4:0] rdE_i,
     input var mem_oper_t mem_operE_i,
     input is_muldiv_instrE_i,
+    input wire atomic_op_e atomic_opE_i,
 
     // EX stage
     input ex_new_pc_en_i,
@@ -131,8 +132,15 @@ wire mem_load_use_hzrd = mem_operE_i.mem_rw[1] & match_d_e;
 wire csr_load_use_hzrd = csr_readE & match_d_e;
 wire mul_div_use_hzrd = is_muldiv_instrE_i & match_d_e;
 
+wire is_scE = ((atomic_opE_i == ATOMIC_LR) & mem_operE_i.mem_rw[0]);
+/*
+ * normally a store does not write to the register file but Sc.W does, and the returned
+ * value is only known in the M stage just like a load, so we treat it as such
+ */
+wire sc_load_use_hzrd = is_scE & match_d_e;
+
 // this is detected in the decode stage
-wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd;
+wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd | sc_load_use_hzrd;
 
 always_comb
 begin: if_steering

@@ -1,25 +1,26 @@
 // Load Store Unit, Interract with the subsystem through Wishbone Pipeline B4
 
+`default_nettype none
+
 module wishbone_lsu_driver
 import riscv_pkg::*;
 (
-    input clk_i,
-    input rstn_i,
+    input wire clk_i,
+    input wire rstn_i,
 
     // LSU <-> Data Port
     wishbone_if.MASTER wb_if,
 
     // <-> LSU unit
-    input req_i,
-    input we_i,
-    input [31:0] addr_i,
-    input [3:0] wsel_byte_i,
-    input [31:0] wdata_i,
+    input wire req_i,
+    input wire we_i,
+    input wire lock_i,
+    input wire [31:0] addr_i,
+    input wire [3:0] wsel_byte_i,
+    input wire [31:0] wdata_i,
 
     output logic req_done_o,
-    output logic [31:0] rdata_o,
-
-    output logic req_stall_o // current request needs to be held
+    output logic [31:0] rdata_o
 );
 
 // count the number of pending acks that we must wait for before
@@ -48,9 +49,9 @@ end
 logic wb_cyc;
 logic wb_stb;
 logic wb_lock;
-logic wb_we;
+logic saved_we;
+logic save;
 logic [31:0] wb_addr;
-logic [3:0] wb_sel;
 logic [31:0] wb_wdata;
 
 assign wb_lock = '0;
@@ -74,15 +75,17 @@ always_comb
 begin : next_state
 
     next = current;
-    req_stall_o = '0;
+    save = '0;
     wb_cyc = '0;
     wb_stb = 0;
 
     case (current)
         IDLE:
         begin
-            if (req_i)
+            if (req_i) begin
+                save = 1'b1;
                 next = BUS_REQ;
+            end
         end
 
         // actively requesting
@@ -91,10 +94,9 @@ begin : next_state
             wb_cyc = 1'b1;
             wb_stb = 1'b1;
 
-            if (wb_if.stall)
-                req_stall_o = 1'b1;
-            else if (!req_i)
-                next = BUS_WAIT;
+            // we only check for ack on the next cycle
+            // so be careful, single cycle responses are thus not handled
+            next = BUS_WAIT;
         end
 
         // only waiting for an ack to return
@@ -113,40 +115,37 @@ end
 // drive the data/control out lines
 always_comb
 begin
-    wb_we = '0;
     wb_addr = '0;
     wb_wdata = '0;
-    wb_sel = '0;
 
     // in this case, we simply translate the request combinationally
     if (current == BUS_REQ)
     begin
-        wb_we = we_i;
         wb_addr = addr_i;
         wb_wdata = wdata_i;
-        wb_sel = we_i ? wsel_byte_i : 4'hf;
     end
 end
 
+flopenrc #(1) wb_we_pipe (clk_i, rstn_i, 1'b0, save, we_i, saved_we);
+
+logic [31:0] rdata_q; // last read data
 // drive the request done signals
-always_comb
-begin
-    req_done_o = '0;
-    rdata_o = '0;
 
-    if (wb_if.ack)
-    begin
-        req_done_o = 1'b1;
-        rdata_o = wb_if.rdata;
-    end
-end
+wire read_ack = (wb_if.ack & ~wb_if.we);
+
+assign rdata_o = read_ack ? wb_if.rdata : rdata_q;
+assign req_done_o = wb_if.ack;
+
+flopenrc #(32) save_rdata_flop (clk_i, rstn_i, 1'b0, read_ack, wb_if.rdata, rdata_q);
 
 // assign signals to wishbone interface
-assign wb_if.cyc = wb_cyc;
-assign wb_if.stb = wb_stb;
-assign wb_if.we = wb_we;
-assign wb_if.addr = wb_addr[31:2];
-assign wb_if.sel = wb_sel;
+assign wb_if.cyc =   wb_cyc;
+assign wb_if.stb =   wb_stb;
+assign wb_if.we =    saved_we;
+assign wb_if.addr =  wb_addr[31:2];
+assign wb_if.sel =   saved_we ? wsel_byte_i : 4'hf;
 assign wb_if.wdata = wb_wdata;
 
 endmodule: wishbone_lsu_driver
+
+`default_nettype wire

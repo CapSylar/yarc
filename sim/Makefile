@@ -1,5 +1,10 @@
 # runs the simulations
 
+# simulation definitions
+MEMFILE := ""
+MAX_TICKS := 1000000
+CURRENT_DIR=$(shell pwd)
+
 # MODE can be app or compliance
 MODE ?= app
 
@@ -21,15 +26,11 @@ else ifeq ($(MODE),compliance)
 	end_signature ?= 0
 	sig_filename_o ?= ""
 
-	DEFINES := +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\"
+	DEFINES := +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\" -GMAX_TICKS=$(MAX_TICKS)
 	DO_FILE := run_gui_compliance.tcl
 else
 	$(error MODE $(MODE) not supported. Supported modes are app and compliance)
 endif
-
-# simulation definitions
-MEMFILE := ""
-CURRENT_DIR=$(shell pwd)
 
 SRC_DIR = $(CURRENT_DIR)/../src
 $(info SRC_DIR is $(SRC_DIR))
@@ -77,7 +78,6 @@ run_sim:
 
 # QUESTASIM ARGUMENTS
 LIB_NAME ?= work
-# TOP_PARAMS += +begin_signature=${begin_signature} +end_signature=${end_signature} +sig_filename_o=${sig_filename_o} -GMEMFILE=\"$(MEMFILE)\"
 
 ifeq ($(IS_GUI), 1)
 	TOP_PARAMS += -gui=interactive 

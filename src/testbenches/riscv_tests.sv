@@ -3,7 +3,7 @@
 
 module riscv_tests
 import riscv_pkg::*;
-#(parameter string MEMFILE = "", parameter int max_ticks = 100000)
+#(parameter string MEMFILE = "", parameter int MAX_TICKS = 1000000)
 ();
 
 // clk generation
@@ -76,7 +76,7 @@ task automatic eval_result(output success);
     int ticks = 0;
     success = 0;
 
-    for (; ticks < max_ticks; ++ticks)
+    for (; ticks < MAX_TICKS; ++ticks)
     begin
         @(posedge clk);
         // $display("tick %d", ticks);
@@ -96,7 +96,7 @@ task automatic eval_result(output success);
         end
     end
 
-    if (ticks == max_ticks) begin
+    if (ticks == MAX_TICKS) begin
         $display("test timed out!");
         success = 666;
     end

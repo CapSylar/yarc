@@ -10,13 +10,11 @@ import riscv_pkg::*;
 
     // Load Store Unit
     output logic lsu_req_o,
-    // read port
     output logic [31:0] lsu_addr_o,
     output logic lsu_we_o,
-    // write port
+    output logic lsu_lock_o,
     output logic [3:0] lsu_wsel_byte_o,
     output logic [31:0] lsu_wdata_o,
-
     input wire [31:0] lsu_rdata_i,
     input wire lsu_req_done_i,
 
@@ -32,6 +30,7 @@ import riscv_pkg::*;
     input wire write_rd_i,
     input wire [4:0] rd_addr_i,
 
+    input wire [31:0] instrM_i,
     // MEM1/MEM2 pipeline registers
     output logic instr_valid_o,
     output logic write_rd_o,
@@ -53,6 +52,8 @@ wire [31:0] to_write = alu_oper2_i;
 logic [3:0] wsel_byte;
 logic [31:0] wdata;
 logic is_write;
+
+wire is_amo = (atomic_opM_i == ATOMIC_AMO);
 
 // detected unaligned addresses
 wire is_half_unaligned = (mem_opM_i.mem_width == 2'b01) & (addr[0] == 1'b1);
@@ -145,12 +146,16 @@ begin : format_rdata
     endcase
 end
 
-// when not to start a memory request
-wire cannot_issue_req = trapM_i | flushW_i;
-logic is_fail_scM;
-wire valid_mem_op = mem_opM_i.mem_rw[1] | (mem_opM_i.mem_rw[0] & ~is_fail_scM);
+// 0: no ops done, 1: one op done (read)
+logic amo_state_d, amo_state_q;
+logic done;
 
-typedef enum {IDLE, WAITING_FOR_DONE} state_t;
+// when not to start a memory request
+wire can_issue_req = ~(trapM_i | flushW_i);
+logic is_fail_scM;
+wire [1:0] gated_rw = {mem_opM_i.mem_rw[1] , (mem_opM_i.mem_rw[0] & ~is_fail_scM)};
+
+typedef enum {IDLE, AMO_WRITE, WAITING_FOR_DONE} state_t;
 state_t state, next;
 
 flopr_type #(state_t, IDLE) state_flop (clk_i, rstn_i, next, state);
@@ -158,19 +163,50 @@ flopr_type #(state_t, IDLE) state_flop (clk_i, rstn_i, next, state);
 always_comb
 begin
     next = state;
+
     lsu_req_o = 1'b0;
+    lsu_we_o = 1'b0;
+    amo_state_d = amo_state_q;
+    done = 1'b0;
 
     unique case (state)
         IDLE: begin
-            if (valid_mem_op & !cannot_issue_req) begin
+            amo_state_d = '0;
+
+            if (|gated_rw & can_issue_req) begin
                 lsu_req_o = 1'b1;
+
+                if (is_amo) begin
+                    lsu_we_o = 1'b0;
+                end else if (gated_rw[1]) begin
+                    lsu_we_o = 1'b0;
+                end else if (gated_rw[0]) begin
+                    lsu_we_o = 1'b1;
+                end
+
                 next = WAITING_FOR_DONE;
             end
         end
 
+        AMO_WRITE: begin
+            lsu_req_o = 1'b1;
+            lsu_we_o = 1'b1;
+
+            next = WAITING_FOR_DONE;
+        end
+
         WAITING_FOR_DONE: begin
             if (lsu_req_done_i) begin
-                next = IDLE;
+
+                // update amo_state when amo
+                amo_state_d = is_amo ? ~amo_state_q : amo_state_q;
+
+                if (is_amo & amo_state_q | ~is_amo) begin
+                    next = IDLE;
+                    done = 1'b1;
+                end else if (is_amo) begin
+                    next = AMO_WRITE;
+                end
             end
         end
     endcase
@@ -179,7 +215,7 @@ end
 /*
  * Here I am using the fact that for now lsu req never responds in the same cycle
  */
-assign lsu_stall_m_o = lsu_req_o | (state != IDLE) & ~lsu_req_done_i;
+assign lsu_stall_m_o = (|gated_rw) & ~done;
 
 /*
  * Load reserved - Store conditional
@@ -201,11 +237,29 @@ assign lsu_stall_m_o = lsu_req_o | (state != IDLE) & ~lsu_req_done_i;
     .is_fail_scW_o(is_fail_scW_o)
  );
 
+/*
+ * Atomic Memory Operations
+ */
+
+logic [31:0] amoalu_result;
+
+amoalu amoalu_i (
+    .loaded_value_i(lsu_rdata_i),
+    .wdata_i(wdata),
+
+    .instrM_i(instrM_i),
+    .result_o(amoalu_result)
+);
+
 // lsu outputs
 assign lsu_addr_o = alu_result_i;
-assign lsu_wdata_o = wdata;
+assign lsu_wdata_o = is_amo ? amoalu_result : wdata;
 assign lsu_wsel_byte_o = wsel_byte;
-assign lsu_we_o = is_write;
+// assign lsu_we_o = is_write;
+// assign lsu_we_o = lsu_we;
+assign lsu_lock_o = is_amo;
+
+flopr #(1) amo_state_flop (clk_i, rstn_i, amo_state_d, amo_state_q);
 
 // pipeline registers
 flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flushW_i, !stallW_i, write_rd_i, write_rd_o);

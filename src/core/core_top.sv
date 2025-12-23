@@ -81,6 +81,7 @@ logic [31:0] ex_mem1_alu_oper2;
 mem_oper_t mem_opE;
 mem_oper_t mem_opM;
 atomic_op_e atomic_opM;
+atomic_op_e atomic_opE;
 logic ex_mem1_write_rd;
 logic [4:0] ex_mem1_rd_addr;
 logic [31:0] branch_target;
@@ -92,6 +93,7 @@ logic trapM, mretM;
 // Driven by the Mem stage
 logic lsu_req;
 logic lsu_we;
+logic lsu_lock;
 logic [31:0] lsu_addr;
 logic lsu_req_done;
 logic [31:0] lsu_rdata;
@@ -195,6 +197,7 @@ datapath datapath_i (
 
     .mem_opE_o(mem_opE),
     .mem_opM_o(mem_opM),
+    .atomic_opE_o(atomic_opE),
     .atomic_opM_o(atomic_opM),
     
     .stallE_i(stallE),
@@ -421,6 +424,7 @@ lsu lsu_i
     .lsu_req_o(lsu_req),
     .lsu_addr_o(lsu_addr),
     .lsu_we_o(lsu_we),
+    .lsu_lock_o(lsu_lock),
     // write port
     .lsu_wsel_byte_o(lsu_wsel_byte),
     .lsu_wdata_o(lsu_wdata),
@@ -440,6 +444,7 @@ lsu lsu_i
     .write_rd_i(ex_mem1_write_rd),
     .rd_addr_i(ex_mem1_rd_addr),
 
+    .instrM_i(instrM),
     // MEM/WB pipeline registers
     .instr_valid_o(instr_validW), // TOOD: clean that shit
     .write_rd_o(mem_wb_write_rd),
@@ -468,13 +473,13 @@ wishbone_lsu_driver wishbone_lsu_driver_i
     // <-> LSU unit
     .req_i(lsu_req),
     .we_i(lsu_we),
+    .lock_i(lsu_lock),
     .addr_i(lsu_addr),
     .wsel_byte_i(lsu_wsel_byte),
     .wdata_i(lsu_wdata),
 
     .req_done_o(lsu_req_done),
-    .rdata_o(lsu_rdata),
-    .req_stall_o()
+    .rdata_o(lsu_rdata)
 );
 
 // Write-back Stage
@@ -518,6 +523,7 @@ controller controller_i
     .rs2E_i(id_ex_rs2_addr),
     .rdE_i(id_ex_rd_addr),
     .mem_operE_i(mem_opE),
+    .atomic_opE_i(atomic_opE),
     .is_muldiv_instrE_i(is_muldiv_instrE),
 
     // from EX stage

@@ -70,6 +70,7 @@ ${PRJ_DIR}/core/datapath.sv
 ${PRJ_DIR}/core/privileged.sv
 ${PRJ_DIR}/core/csr.sv
 ${PRJ_DIR}/core/lrsc.sv
+${PRJ_DIR}/core/amoalu.sv
 ${PRJ_DIR}/core/lsu.sv
 ${PRJ_DIR}/core/wishbone_lsu_driver.sv
 
