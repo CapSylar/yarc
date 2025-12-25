@@ -6,6 +6,9 @@ import riscv_pkg::*;
     input clk_i,
     input rstn_i,
 
+    input stallM_i,
+    input flushM_i,
+
     // from ID/EX
     input [31:0] pc_i,
     input [31:0] rs1_data_i,
@@ -15,30 +18,17 @@ import riscv_pkg::*;
     input alu_oper2_src_t alu_oper2_src_i,
     input alu_oper_t alu_oper_i,
     input bnj_oper_t bnj_oper_i,
-    input instr_valid_i,
+    input wire [31:0] instrE_i,
 
     output logic [31:0] rs1_forwarded_value_o,
     output logic [31:0] rs2_forwarded_value_o,
     
-    // forward to the WB stage
-    input write_rd_i,
-    input [4:0] rd_addr_i,
-
     // EX/MEM pipeline registers
     output logic [31:0] rs1ValueM_o,
 
     // feedback into the pipeline registers
-    input stallM_i,
-    input flushM_i,
-
-    output logic [31:0] alu_result_o, // always contains a mem address or the rd value
-    output logic [31:0] alu_oper2_o,
-    output logic [31:0] pc_o,
-    output logic instr_valid_o,
-
-    // for WB stage exclusively
-    output logic write_rd_o,
-    output logic [4:0] rd_addr_o,
+    output logic [31:0] alu_resultM_o, // always contains a mem address or the rd value
+    output logic [31:0] alu_oper2M_o,
 
     // branches and jumps
     output logic new_pc_en_o,
@@ -70,8 +60,6 @@ begin
             operand1 = pc_i;
         OPER1_ZERO:
             operand1 = '0;
-        OPER1_CSR_IMM:
-            operand1 = imm_i;
         default:;
     endcase
 end
@@ -88,8 +76,6 @@ begin
             operand2 = imm_i;
         OPER2_PC_INC:
             operand2 = 4; // no support for compressed instructions extension, yet
-        OPER2_CSR:
-            operand2 = '0;
         OPER2_ZERO:
             operand2 = '0;
         default:;
@@ -164,88 +150,54 @@ begin
     endcase
 end
 
-logic [31:0] alu_result;
+logic [31:0] alu_resultE;
 wire [4:0] shift_amount = operand2[4:0];
 
 // alu result mux
 always_comb
 begin
-    alu_result = '0;
+    alu_resultE = '0;
     unique case (alu_oper_i)
-        ALU_ADD, ALU_SUB: alu_result = adder_result;
+        ALU_ADD, ALU_SUB: alu_resultE = adder_result;
 
         // comparsion operations
         ALU_SEQ, ALU_SNEQ,
         ALU_SLT, ALU_SLTU,
-        ALU_SGE, ALU_SGEU: alu_result = {31'd0, cmp_result};
+        ALU_SGE, ALU_SGEU: alu_resultE = {31'd0, cmp_result};
 
         // bitwise operations
-        ALU_XOR: alu_result = operand1 ^ operand2;
-        ALU_OR:  alu_result = operand1 | operand2;
-        ALU_AND: alu_result = operand1 & operand2;
+        ALU_XOR: alu_resultE = operand1 ^ operand2;
+        ALU_OR:  alu_resultE = operand1 | operand2;
+        ALU_AND: alu_resultE = operand1 & operand2;
 
         // shift operations
-        ALU_SLL: alu_result = operand1 << shift_amount;
-        ALU_SRL: alu_result = operand1 >> shift_amount;
-        ALU_SRA: alu_result = $signed(operand1) >>> shift_amount;
+        ALU_SLL: alu_resultE = operand1 << shift_amount;
+        ALU_SRL: alu_resultE = operand1 >> shift_amount;
+        ALU_SRA: alu_resultE = $signed(operand1) >>> shift_amount;
 
         default:;
     endcase
 end
 
 logic new_pc_en;
-// handle branches and jumps
-always_comb
-begin
-    new_pc_en = '0;
-    branch_target_o = '0;
 
-    unique case (bnj_oper_i)
-        BNJ_JAL:
-        begin
-            new_pc_en = 1'b1;
-            branch_target_o = pc_i + imm_i;
-        end
+branch_unit branch_unit_i (
+    .rs1ValueE_i(rs1ValueE),
+    .rs2ValueE_i(rs2ValueE),
 
-        BNJ_JALR:
-        begin
-            new_pc_en = 1'b1;
-            branch_target_o = rs1ValueE + imm_i;
-        end
+    .pc_i(pc_i),
+    .imm_i(imm_i),
 
-        BNJ_BRANCH:
-        begin
-            new_pc_en = cmp_result;
-            branch_target_o = pc_i + imm_i;
-        end
-        default:;
-    endcase
-end
+    .bnj_oper_i(bnj_oper_i),
+    .func3E_i   (instrE_i[14:12]), // FIXME: not like this
+
+    .branch_taken_o(new_pc_en),
+    .branch_target_o(branch_target_o)
+);
 
 flopenrc #(32) rs1ValueD_pipe (clk_i, rstn_i, flushM_i, !stallM_i, rs1ValueE, rs1ValueM_o);
-
-// pipeline registers and outputs
-always_ff @(posedge clk_i)
-begin : ex_mem_pip
-    if (!rstn_i || flushM_i)
-    begin
-        instr_valid_o <= '0;
-        write_rd_o <= 0;
-    end
-    else if (!stallM_i)
-    begin
-        // TODO: rename alu_result_o
-        // since it doesn't really reflect alu_result
-        // it is really the value to write to rd if any
-        alu_result_o <= alu_result;
-        alu_oper2_o <= rs2ValueE;
-        pc_o <= pc_i;
-        instr_valid_o <= instr_valid_i;
-
-        write_rd_o <= write_rd_i;
-        rd_addr_o <= rd_addr_i;
-    end
-end
+flopenrc #(32) alu_result_pipe (clk_i, rstn_i, flushM_i, !stallM_i, alu_resultE, alu_resultM_o);
+flopenrc #(32) alu_oper2_pipe (clk_i, rstn_i, flushM_i, !stallM_i, rs2ValueE, alu_oper2M_o);
 
 /*
  * we used stallM instead of stallE because otherwise a logic loop would be created

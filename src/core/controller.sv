@@ -26,14 +26,14 @@ import csr_pkg::*;
 
     // from EX/MEM
     input mdu_busyE_i,
-    input [31:0] ex_mem_pc_i,
+    input [31:0] pcM_i,
     input [4:0] rdM_i,
-    input ex_mem_write_rd_i,
+    input write_rdM_i,
     input [31:0] ex_mem_alu_result_i,
 
     // from MEM/WB
     input [4:0] rdW_i,
-    input mem_wb_write_rd_i,
+    input write_rdW_i,
     input [31:0] rdvalueW_i,
     input mem_stall_needed_i,
     input wire trapM_i,
@@ -84,17 +84,17 @@ always_comb begin
     forward_rs2 = '0;
 
     if (rs1E_i != 0) begin
-        if ((rs1E_i == rdM_i) & ex_mem_write_rd_i) begin
+        if ((rs1E_i == rdM_i) & write_rdM_i) begin
             forward_rs1 = 2'b10;
-        end else if ((rs1E_i == rdW_i) & mem_wb_write_rd_i) begin
+        end else if ((rs1E_i == rdW_i) & write_rdW_i) begin
             forward_rs1 = 2'b01;
         end
     end
 
     if (rs2E_i != 0) begin
-        if ((rs2E_i == rdM_i) & ex_mem_write_rd_i) begin
+        if ((rs2E_i == rdM_i) & write_rdM_i) begin
             forward_rs2 = 2'b10;
-        end else if ((rs2E_i == rdW_i) & mem_wb_write_rd_i) begin
+        end else if ((rs2E_i == rdW_i) & write_rdW_i) begin
             forward_rs2 = 2'b01;
         end
     end
@@ -148,7 +148,7 @@ begin: if_steering
     pc_sel_o = PC_JUMP;
 
     // for exceptions
-    exc_pc_o = ex_mem_pc_i;
+    exc_pc_o = pcM_i;
 
     if (trapM_i) begin
         new_pc_en_o = 1'b1;

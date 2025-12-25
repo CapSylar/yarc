@@ -9,7 +9,7 @@ import riscv_pkg::*;
     // from MEM/WB
     input write_rd_i,
     input var result_src_e result_srcW_i,
-    input [4:0] rd_addr_i,
+    input [4:0] rdW_i,
 
     // result sources
     input [31:0] alu_result_i,
@@ -28,7 +28,7 @@ import riscv_pkg::*;
 
 // assign outputs
 assign regf_write_o = write_rd_i;
-assign regf_waddr_o = rd_addr_i;
+assign regf_waddr_o = rdW_i;
 
 mux5 #(32) wb_data_mux (
     alu_result_i,

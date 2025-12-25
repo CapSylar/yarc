@@ -23,18 +23,10 @@ import riscv_pkg::*;
     input wire [31:0] alu_oper2_i,
     input wire mem_oper_t mem_opM_i,
     input wire atomic_op_e atomic_opM_i,
-    input wire instr_valid_i,
     input wire trapM_i,
-
-    // for WB stage exclusively
-    input wire write_rd_i,
-    input wire [4:0] rd_addr_i,
 
     input wire [31:0] instrM_i,
     // MEM1/MEM2 pipeline registers
-    output logic instr_valid_o,
-    output logic write_rd_o,
-    output logic [4:0] rd_addr_o,
     output logic [31:0] alu_result_o,
     output logic [31:0] lsu_rdata_o,
     output logic is_fail_scW_o,
@@ -241,10 +233,13 @@ assign lsu_stall_m_o = (|gated_rw) & ~done;
  * Atomic Memory Operations
  */
 
+logic [31:0] rdata_q; // last read data
+flopenrc #(32) save_rdata_flop (clk_i, rstn_i, 1'b0, (lsu_req_done_i & ~lsu_we_o), rdata, rdata_q);
+
 logic [31:0] amoalu_result;
 
 amoalu amoalu_i (
-    .loaded_value_i(lsu_rdata_i),
+    .loaded_value_i(rdata_q),
     .wdata_i(wdata),
 
     .instrM_i(instrM_i),
@@ -262,12 +257,8 @@ assign lsu_lock_o = is_amo;
 flopr #(1) amo_state_flop (clk_i, rstn_i, amo_state_d, amo_state_q);
 
 // pipeline registers
-flopenrc #(1) write_rd_reg      (clk_i, rstn_i, flushW_i, !stallW_i, write_rd_i, write_rd_o);
 flopenrc #(32) alu_result_reg   (clk_i, rstn_i, flushW_i, !stallW_i, alu_result_i, alu_result_o);
-flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flushW_i, !stallW_i, rdata, lsu_rdata_o);
-
-flopenrc #(5) rd_addr_reg       (clk_i, rstn_i, flushW_i, !stallW_i, rd_addr_i, rd_addr_o);
-flopenrc #(1) instr_valid_reg   (clk_i, rstn_i, flushW_i, !stallW_i, instr_valid_i, instr_valid_o);
+flopenrc #(32) lsu_rdata_reg    (clk_i, rstn_i, flushW_i, !stallW_i, (is_amo ? rdata_q : rdata), lsu_rdata_o);
 
 endmodule: lsu
 

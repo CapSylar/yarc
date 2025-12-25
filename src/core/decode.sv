@@ -25,7 +25,6 @@ import csr_pkg::*;
 
     // from IF stage
     input [31:0] instr_i, // instruction
-    input [31:0] pc_i, // pc of the instruction
 
     // ID/EX pipeline registers
 
@@ -34,16 +33,13 @@ import csr_pkg::*;
     input flush_i, // zero the register contents
 
     // for direct use by the EX stage
-    output logic [31:0] pc_o, // forwarded from IF/ID
     output logic [31:0] rs1_data_o,
     output logic [31:0] rs2_data_o,
     output logic [31:0] imm_o,
-    // output logic [31:0] csr_rdata_o,
     output alu_oper1_src_t alu_oper1_src_o,
     output alu_oper2_src_t alu_oper2_src_o,
     output bnj_oper_t bnj_oper_o,
     output alu_oper_t alu_oper_o,
-    output logic instr_valid_o,
 
     output logic is_muldiv_instrE_o, // is the instruction a mul/div instruction?
 
@@ -57,8 +53,8 @@ import csr_pkg::*;
 
     // for the WB stage
     output result_src_e result_srcE_o,
-    output logic write_rd_o,
-    output logic [4:0] rd_addr_o,
+    output logic write_rdD_o,
+    output logic [4:0] rdD_o,
 
     // used by the hazard/forwarding logic
     output logic [4:0] rs1_addr_o,
@@ -69,12 +65,12 @@ import csr_pkg::*;
 
 // extract the common fields from the instruction format
 opcode_t opcode;
-logic [4:0] rs1, rs2, rd;
+logic [4:0] rs1, rs2, rdD;
 logic [2:0] func3;
 logic [6:0] func7;
 
 assign opcode = opcode_t'(instr_i[6:0]);
-assign rd = instr_i[11:7];
+assign rdD = instr_i[11:7];
 assign rs1 = instr_i[19:15];
 assign rs2 = instr_i[24:20];
 assign func3 = instr_i[14:12];
@@ -117,7 +113,7 @@ assign imm_csr = 32'({instr_i[19:15]}); // used for immediate csr instructions
 
 alu_oper_t alu_oper;
 logic [31:0] curr_imm;
-logic write_rd;
+logic write_rdD;
 result_src_e result_srcD;
 
 alu_oper1_src_t alu_oper1_src;
@@ -139,7 +135,7 @@ begin : main_decode
     alu_oper1_src = OPER1_RS1;
     alu_oper2_src = OPER2_RS2;
 
-    write_rd = '0;
+    write_rdD = '0;
     result_srcD = RESULT_ALU;
     curr_imm = '0;
     bnj_oper = BNJ_NO; // no branch
@@ -168,7 +164,7 @@ begin : main_decode
                 alu_oper2_src = OPER2_IMM;
 
                 curr_imm = imm_u;
-                write_rd = 1;
+                write_rdD = 1;
             end
 
             AUIPC:
@@ -177,7 +173,7 @@ begin : main_decode
                 alu_oper2_src = OPER2_IMM;
 
                 curr_imm = imm_u;
-                write_rd = 1;
+                write_rdD = 1;
             end
 
             JAL:
@@ -186,7 +182,7 @@ begin : main_decode
                 alu_oper2_src = OPER2_PC_INC;
 
                 curr_imm = imm_j;
-                write_rd = 1;
+                write_rdD = 1;
                 bnj_oper = BNJ_JAL;
             end
 
@@ -196,7 +192,7 @@ begin : main_decode
                 alu_oper2_src = OPER2_PC_INC;
                 
                 curr_imm = imm_i;
-                write_rd = 1;
+                write_rdD = 1;
                 bnj_oper = BNJ_JALR;
             end
 
@@ -211,7 +207,7 @@ begin : main_decode
                 alu_oper2_src = OPER2_IMM;
                 curr_imm = imm_i;
 
-                write_rd = 1;
+                write_rdD = 1;
                 result_srcD = RESULT_MEM;
 
                 mem_operD.mem_rw = 2'b10;
@@ -227,7 +223,7 @@ begin : main_decode
 
             ARITH:
             begin
-                write_rd = 1;
+                write_rdD = 1;
                 
                 if (is_func7_muldiv) begin
                     is_muldiv_instrD = 1'b1;
@@ -241,7 +237,7 @@ begin : main_decode
             begin
                 alu_oper2_src = OPER2_IMM;
                 curr_imm = imm_i;
-                write_rd = 1;
+                write_rdD = 1;
 
                 if (!is_imm_arith) begin
                     illegal_instrD_o = 1'b1;
@@ -255,7 +251,7 @@ begin : main_decode
 
             SYSTEM:
             begin
-                if (func3 == '0 && rd == '0) // ecall, ebreak or mret
+                if (func3 == '0 && rdD == '0) // ecall, ebreak or mret
                 begin
                     if (func7 == 7'b0011000) // mret
                         sys_instrD = MRET;
@@ -269,7 +265,7 @@ begin : main_decode
                 end
                 else  // CSR instruction
                 begin
-                    write_rd = 1'b1;
+                    write_rdD = 1'b1;
                     result_srcD = RESULT_CSR;
                     // determine if csr will be read
                     // In CSRRW*: if rd = Zero, the csr is not read and any read side-effects will not be triggered
@@ -287,7 +283,7 @@ begin : main_decode
 
             ATOMIC: begin
                 alu_oper2_src = OPER2_ZERO;
-                write_rd = 1'b1;
+                write_rdD = 1'b1;
 
                 // LR.D
                 if ((instr_i[24:20] == 5'b0) & (upper_5 == 5'b00010)) begin
@@ -375,7 +371,6 @@ always_ff @(posedge clk_i)
 begin : id_ex_pip
     if (!rstn_i || flush_i)
     begin
-        pc_o <= 0;
         rs1_data_o <= 0;
         rs2_data_o <= 0;
         imm_o <= 0;
@@ -384,13 +379,10 @@ begin : id_ex_pip
         alu_oper2_src_o <= OPER2_RS2;
         bnj_oper_o <= BNJ_NO;
         alu_oper_o <= ALU_ADD;
-        instr_valid_o <= '0;
 
         csr_we_o <= 0;
 
-        write_rd_o <= 0;
         result_srcE_o <= RESULT_ALU;
-        rd_addr_o <= 0;
 
         rs1_addr_o <= 0;
         rs2_addr_o <= 0;
@@ -399,7 +391,6 @@ begin : id_ex_pip
     end
     else if (!stall_i)
     begin
-        pc_o <= pc_i;
         rs1_data_o <= rs1_data_i;
         rs2_data_o <= rs2_data_i;
         imm_o <= curr_imm;
@@ -408,13 +399,10 @@ begin : id_ex_pip
         alu_oper2_src_o <= alu_oper2_src;
         bnj_oper_o <= bnj_oper;
         alu_oper_o <= alu_oper;
-        instr_valid_o <= instr_valid_i;
 
         csr_we_o <= csr_we;
 
-        write_rd_o <= write_rd;
         result_srcE_o <= result_srcD;
-        rd_addr_o <= rd;
 
         rs1_addr_o <= rs1;
         rs2_addr_o <= rs2;
@@ -422,5 +410,8 @@ begin : id_ex_pip
         sys_instrE_o <= sys_instrD;
     end
 end
+
+assign write_rdD_o = write_rdD;
+assign rdD_o = rdD;
 
 endmodule: decode

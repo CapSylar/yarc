@@ -42,8 +42,8 @@ multiplier multiplier_i
     .stallM_i(stallM_i),
     .flushM_i(flushM_i),
 
-    .input_a_i({32{is_mul}} & rs1_forwarded_value_i),
-    .input_b_i({32{is_mul}} & rs2_forwarded_value_i),
+    .input_a_i(rs1_forwarded_value_i),
+    .input_b_i(rs2_forwarded_value_i),
 
     .funct3_i(funct3E),
 

@@ -2,7 +2,7 @@
 
 # simulation definitions
 MEMFILE := ""
-MAX_TICKS := 1000000
+MAX_TICKS := 100000
 CURRENT_DIR=$(shell pwd)
 
 # MODE can be app or compliance

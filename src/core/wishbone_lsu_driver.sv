@@ -128,15 +128,9 @@ end
 
 flopenrc #(1) wb_we_pipe (clk_i, rstn_i, 1'b0, save, we_i, saved_we);
 
-logic [31:0] rdata_q; // last read data
 // drive the request done signals
-
-wire read_ack = (wb_if.ack & ~wb_if.we);
-
-assign rdata_o = read_ack ? wb_if.rdata : rdata_q;
+assign rdata_o = wb_if.rdata;
 assign req_done_o = wb_if.ack;
-
-flopenrc #(32) save_rdata_flop (clk_i, rstn_i, 1'b0, read_ack, wb_if.rdata, rdata_q);
 
 // assign signals to wishbone interface
 assign wb_if.cyc =   wb_cyc;

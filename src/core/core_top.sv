@@ -62,16 +62,15 @@ alu_oper_t id_ex_alu_oper;
 mem_oper_t mem_opD;
 atomic_op_e atomic_opD;
 logic csr_writeE;
-logic id_ex_write_rd;
+logic write_rdD;
 result_src_e result_srcE, result_srcW;
-logic [4:0] id_ex_rd_addr;
+logic [4:0] rdD;
 logic [4:0] id_ex_rs1_addr;
 logic [4:0] id_ex_rs2_addr;
 exc_t sys_instrE;
 exc_t sys_instrM;
 logic load_misaligned_trapM;
 logic store_misaligned_trapM;
-// logic take_irqM;
 
 // Driven by the Ex stage
 logic [31:0] rs1_forwarded_valueE;
@@ -82,11 +81,12 @@ mem_oper_t mem_opE;
 mem_oper_t mem_opM;
 atomic_op_e atomic_opM;
 atomic_op_e atomic_opE;
-logic ex_mem1_write_rd;
-logic [4:0] ex_mem1_rd_addr;
+logic write_rdM;
+logic [4:0] rdM;
+logic [4:0] rdE;
 logic [31:0] branch_target;
 logic ex_new_pc_en;
-logic [31:0] ex_mem1_pc;
+logic [31:0] pcM;
 logic instr_validM;
 logic trapM, mretM;
 
@@ -104,9 +104,9 @@ logic csr_writeM, csr_readM;
 logic [31:0] muldiv_resultW;
 
 // Driven by the WB stage
-logic mem_wb_write_rd;
+logic write_rdW;
 logic instr_validW;
-logic [4:0] mem_wb_rd_addr;
+logic [4:0] rdW;
 logic [31:0] mem_wb_alu_result;
 logic [31:0] mem_wb_lsu_rdata;
 logic is_fail_scW;
@@ -192,6 +192,10 @@ datapath datapath_i (
     .csr_writeE_i(csr_writeE),
     .result_srcE_i(result_srcE),
 
+    .pcD_i(pcD),
+    .pcE_o(pcE),
+    .pcM_o(pcM),
+
     .mem_opD_i(mem_opD),
     .atomic_opD_i(atomic_opD),
 
@@ -199,6 +203,20 @@ datapath datapath_i (
     .mem_opM_o(mem_opM),
     .atomic_opE_o(atomic_opE),
     .atomic_opM_o(atomic_opM),
+
+    .write_rdD_i(write_rdD),
+    .write_rdM_o(write_rdM),
+    .write_rdW_o(write_rdW),
+
+    .instr_validD_i(instr_validD),
+    .instr_validE_o(instr_validE),
+    .instr_validM_o(instr_validM),
+    .instr_validW_o(instr_validW),
+
+    .rdD_i(rdD),
+    .rdE_o(rdE),
+    .rdM_o(rdM),
+    .rdW_o(rdW),
     
     .stallE_i(stallE),
     .flushE_i(flushE),
@@ -297,7 +315,6 @@ decode decode_i
 
     // from IF stage
     .instr_i(instrD), // instruction
-    .pc_i(pcD), // pc of the instruction
 
     // ID/EX pipeline registers ************************************************
 
@@ -306,7 +323,6 @@ decode decode_i
     .flush_i(flushE), // zero the register contents
 
     // for direct use by the EX stage
-    .pc_o(pcE), // forwarded from IF/ID
     .rs1_data_o(id_ex_rs1_data),
     .rs2_data_o(id_ex_rs2_data),
     .imm_o(id_ex_imm),
@@ -314,7 +330,6 @@ decode decode_i
     .alu_oper2_src_o(id_ex_alu_oper2_src),
     .bnj_oper_o(id_ex_bnj_oper),
     .alu_oper_o(id_ex_alu_oper),
-    .instr_valid_o(instr_validE),
 
     .is_muldiv_instrE_o(is_muldiv_instrE),
 
@@ -328,9 +343,9 @@ decode decode_i
     .csr_we_o(csr_writeE),
 
     // for the WB stage
-    .write_rd_o(id_ex_write_rd),
+    .write_rdD_o(write_rdD),
     .result_srcE_o(result_srcE),
-    .rd_addr_o(id_ex_rd_addr),
+    .rdD_o(rdD),
 
     // used by the hazard/forwarding logic
     .rs1_addr_o(id_ex_rs1_addr),
@@ -354,14 +369,10 @@ execute execute_i
     .alu_oper2_src_i(id_ex_alu_oper2_src),
     .alu_oper_i(id_ex_alu_oper),
     .bnj_oper_i(id_ex_bnj_oper),
-    .instr_valid_i(instr_validE),
+    .instrE_i(instrE),
 
     .rs1_forwarded_value_o(rs1_forwarded_valueE),
     .rs2_forwarded_value_o(rs2_forwarded_valueE),
-
-    // forward to the WB stage
-    .write_rd_i(id_ex_write_rd),
-    .rd_addr_i(id_ex_rd_addr),
 
     // EX/MEM pipeline registers
     .rs1ValueM_o(rs1ValueM),
@@ -370,14 +381,8 @@ execute execute_i
     .stallM_i(stallM), // keep the same content in the registers
     .flushM_i(flushM), // zero the register contents
 
-    .alu_result_o(alu_resultM),
-    .alu_oper2_o(ex_mem1_alu_oper2),
-    .pc_o(ex_mem1_pc),
-    .instr_valid_o(instr_validM),
-
-    // for WB stage exclusively
-    .write_rd_o(ex_mem1_write_rd),
-    .rd_addr_o(ex_mem1_rd_addr),
+    .alu_resultM_o(alu_resultM),
+    .alu_oper2M_o(ex_mem1_alu_oper2),
 
     // branches and jumps
     .new_pc_en_o(ex_new_pc_en),
@@ -439,18 +444,10 @@ lsu lsu_i
     .mem_opM_i(mem_opM),
     .atomic_opM_i(atomic_opM),
 
-    .instr_valid_i(instr_validM),
     .trapM_i(trapM),
-
-    // for WB stage exclusively
-    .write_rd_i(ex_mem1_write_rd),
-    .rd_addr_i(ex_mem1_rd_addr),
-
     .instrM_i(instrM),
+
     // MEM/WB pipeline registers
-    .instr_valid_o(instr_validW), // TOOD: clean that shit
-    .write_rd_o(mem_wb_write_rd),
-    .rd_addr_o(mem_wb_rd_addr),
     .alu_result_o(mem_wb_alu_result),
     .lsu_rdata_o(mem_wb_lsu_rdata),
     .is_fail_scW_o(is_fail_scW),
@@ -492,8 +489,8 @@ write_back write_back_i
 
     // from MEM/WB
     .result_srcW_i(result_srcW),
-    .write_rd_i(mem_wb_write_rd),
-    .rd_addr_i(mem_wb_rd_addr),
+    .write_rd_i(write_rdW),
+    .rdW_i(rdW),
     .alu_result_i(mem_wb_alu_result),
     .lsu_rdata_i(mem_wb_lsu_rdata),
     .csr_rdata_i(csr_rdataW),
@@ -523,7 +520,7 @@ controller controller_i
     // from ID/EX pipeline
     .rs1E_i(id_ex_rs1_addr),
     .rs2E_i(id_ex_rs2_addr),
-    .rdE_i(id_ex_rd_addr),
+    .rdE_i(rdE),
     .mem_operE_i(mem_opE),
     .atomic_opE_i(atomic_opE),
     .is_muldiv_instrE_i(is_muldiv_instrE),
@@ -533,14 +530,14 @@ controller controller_i
 
     // from EX/MEM
     .mdu_busyE_i(mdu_busyE),
-    .ex_mem_pc_i(ex_mem1_pc),
-    .rdM_i(ex_mem1_rd_addr),
-    .ex_mem_write_rd_i(ex_mem1_write_rd),
+    .pcM_i(pcM),
+    .rdM_i(rdM),
+    .write_rdM_i(write_rdM),
     .ex_mem_alu_result_i(alu_resultM),
 
     // from MEM/WB
-    .rdW_i(mem_wb_rd_addr),
-    .mem_wb_write_rd_i(mem_wb_write_rd),
+    .rdW_i(rdW),
+    .write_rdW_i(write_rdW),
     .rdvalueW_i(rdValueW),
     .mem_stall_needed_i(mem_stall_needed),
     .trapM_i(trapM),

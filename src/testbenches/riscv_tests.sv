@@ -72,7 +72,7 @@ always_ff @(posedge clk, negedge rstn)
 
 
 // ******************************************************************************************
-task automatic eval_result(output success);
+task automatic eval_result(output int success);
     int ticks = 0;
     success = 0;
 
@@ -137,7 +137,7 @@ initial begin
 end
 
 task automatic run_test();
-    bit success = 0;
+    int success = 0;
     eval_result(success);
 
     if (success == 0)

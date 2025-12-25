@@ -113,7 +113,6 @@ add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter_incr;
 # ---------------------------------------------------------
 add wave -divider {DECODE}
 add wave ${CORE}/decode_i/current_plvl_i;
-add wave ${CORE}/decode_i/pc_i;
 add wave ${CORE}/decode_i/instr_i;
 add wave ${CORE}/decode_i/stall_i;
 add wave ${CORE}/decode_i/flush_i;
@@ -153,8 +152,8 @@ add wave ${CORE}/execute_i/rd_addr_i;
 add wave ${CORE}/execute_i/new_pc_en_o;
 add wave ${CORE}/execute_i/branch_target_o;
 
-add wave -color Turquoise ${CORE}/execute_i/stall_i;
-add wave -color Turquoise ${CORE}/execute_i/flush_i;
+add wave -color Turquoise ${CORE}/execute_i/stallM_i;
+add wave -color Turquoise ${CORE}/execute_i/flushM_i;
 
 add wave -color Turquoise ${CORE}/execute_i/forward_rs1_i;
 add wave -color Turquoise ${CORE}/execute_i/forward_rs2_i;

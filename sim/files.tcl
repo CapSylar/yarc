@@ -58,6 +58,7 @@ ${PRJ_DIR}/core/fetch_modules/wb_prefetch.sv
 ${PRJ_DIR}/core/core_top.sv
 ${PRJ_DIR}/core/decode.sv
 ${PRJ_DIR}/core/controller.sv
+${PRJ_DIR}/core/branch_unit.sv
 ${PRJ_DIR}/core/execute.sv
 ${PRJ_DIR}/core/multiplier.sv
 ${PRJ_DIR}/core/divider.sv
