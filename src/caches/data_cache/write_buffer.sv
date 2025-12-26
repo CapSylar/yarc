@@ -218,7 +218,7 @@ always_ff @(posedge clk_i) begin
 end
 
 assign hit_o = hit_q;
-assign hit_data_o = hit_data_q >> (check_addr_q[OFFSET_BITS-1:0]);
+assign hit_data_o = hit_data_q >> (check_addr_q[OFFSET_BITS-1:0]) * DATA_W;
 
 // coalescing part
 logic [NUM_ELEMS-1:0] merge_line_match;
