@@ -63,8 +63,7 @@ typedef enum
 {
     OPER1_RS1,
     OPER1_ZERO,
-    OPER1_PC,
-    OPER1_CSR_IMM
+    OPER1_PC
 } alu_oper1_src_t;
 
 typedef enum
@@ -72,7 +71,6 @@ typedef enum
     OPER2_RS2,
     OPER2_IMM,
     OPER2_PC_INC,
-    OPER2_CSR,
     OPER2_ZERO
 } alu_oper2_src_t;
 

@@ -84,8 +84,8 @@ atomic_op_e atomic_opE;
 logic write_rdM;
 logic [4:0] rdM;
 logic [4:0] rdE;
-logic [31:0] branch_target;
-logic ex_new_pc_en;
+logic [31:0] branch_targetE;
+logic branch_takenE;
 logic [31:0] pcM;
 logic instr_validM;
 logic trapM, mretM;
@@ -154,7 +154,7 @@ wb_prefetch wb_prefetch_i
     .flush_cache_i(flushD),
 
     // target addresses
-    .branch_target_i(branch_target),
+    .branch_target_i(branch_targetE),
     .csr_mepc_i(csr_mepc),
     .mtvec_i(csr_mtvec),
     .trap_mcauseM_i(trap_mcauseM),
@@ -385,8 +385,8 @@ execute execute_i
     .alu_oper2M_o(ex_mem1_alu_oper2),
 
     // branches and jumps
-    .new_pc_en_o(ex_new_pc_en),
-    .branch_target_o(branch_target),
+    .branch_takenE_o(branch_takenE),
+    .branch_targetE_o(branch_targetE),
 
     // from forwarding logic
     .forward_rs1_i(forward_rs1),
@@ -526,7 +526,7 @@ controller controller_i
     .is_muldiv_instrE_i(is_muldiv_instrE),
 
     // from EX stage
-    .ex_new_pc_en_i(ex_new_pc_en),
+    .branch_takenE_i(branch_takenE),
 
     // from EX/MEM
     .mdu_busyE_i(mdu_busyE),

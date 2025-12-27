@@ -31,8 +31,8 @@ import riscv_pkg::*;
     output logic [31:0] alu_oper2M_o,
 
     // branches and jumps
-    output logic new_pc_en_o,
-    output logic [31:0] branch_target_o,
+    output logic branch_takenE_o,
+    output logic [31:0] branch_targetE_o,
 
     // from forwarding logic
     input [1:0] forward_rs1_i,
@@ -53,14 +53,12 @@ always_comb
 begin
     operand1 = '0;
 
-    unique case (alu_oper1_src_i)
+    case (alu_oper1_src_i)
         OPER1_RS1:
             operand1 = rs1ValueE;
         OPER1_PC:
             operand1 = pc_i;
-        OPER1_ZERO:
-            operand1 = '0;
-        default:;
+        // OPER1_ZERO:
     endcase
 end
 
@@ -69,16 +67,14 @@ always_comb
 begin
     operand2 = '0;
 
-    unique case (alu_oper2_src_i)
+    case (alu_oper2_src_i)
         OPER2_RS2:
             operand2 = rs2ValueE;
         OPER2_IMM:
             operand2 = imm_i;
         OPER2_PC_INC:
             operand2 = 4; // no support for compressed instructions extension, yet
-        OPER2_ZERO:
-            operand2 = '0;
-        default:;
+        // OPER2_ZERO:
     endcase
 end
 
@@ -179,7 +175,7 @@ begin
     endcase
 end
 
-logic new_pc_en;
+logic branch_takenE;
 
 branch_unit branch_unit_i (
     .rs1ValueE_i(rs1ValueE),
@@ -189,10 +185,10 @@ branch_unit branch_unit_i (
     .imm_i(imm_i),
 
     .bnj_oper_i(bnj_oper_i),
-    .func3E_i   (instrE_i[14:12]), // FIXME: not like this
+    .func3E_i(instrE_i[14:12]), // FIXME: not like this
 
-    .branch_taken_o(new_pc_en),
-    .branch_target_o(branch_target_o)
+    .branch_takenE_o(branch_takenE),
+    .branch_targetE_o(branch_targetE_o)
 );
 
 flopenrc #(32) rs1ValueD_pipe (clk_i, rstn_i, flushM_i, !stallM_i, rs1ValueE, rs1ValueM_o);
@@ -203,7 +199,7 @@ flopenrc #(32) alu_oper2_pipe (clk_i, rstn_i, flushM_i, !stallM_i, rs2ValueE, al
  * we used stallM instead of stallE because otherwise a logic loop would be created
  * this works because the only thing that can really stall a branch is stallM 
  */
-assign new_pc_en_o = new_pc_en & ~stallM_i;
+assign branch_takenE_o = branch_takenE & ~stallM_i;
 
 assign rs1_forwarded_value_o = rs1ValueE;
 assign rs2_forwarded_value_o = rs2ValueE;

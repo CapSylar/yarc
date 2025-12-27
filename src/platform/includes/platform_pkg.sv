@@ -158,7 +158,7 @@ localparam INSTR_CACHE_NUM_SETS_LOG2 = 9;
 
 // ********************* Data Cache *********************
 localparam DATA_CACHE_NUM_SETS_LOG2 = 8;
-localparam WRITE_BUFFER_DEPTH_LOG2 = 2;
+localparam WRITE_BUFFER_DEPTH_LOG2 = 1;
 
 // wbuart32 config register
 typedef struct packed

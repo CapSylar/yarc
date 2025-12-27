@@ -22,7 +22,7 @@ import csr_pkg::*;
     input wire atomic_op_e atomic_opE_i,
 
     // EX stage
-    input ex_new_pc_en_i,
+    input branch_takenE_i,
 
     // from EX/MEM
     input mdu_busyE_i,
@@ -142,26 +142,21 @@ wire sc_load_use_hzrd = is_scE & match_d_e;
 // this is detected in the decode stage
 wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd | sc_load_use_hzrd;
 
+assign exc_pc_o = pcM_i;
+
+assign new_pc_en_o = trapM_i | mretM_i | csr_writeM_i | branch_takenE_i;
+
 always_comb
 begin: if_steering
-    new_pc_en_o = '0;
     pc_sel_o = PC_JUMP;
 
-    // for exceptions
-    exc_pc_o = pcM_i;
-
     if (trapM_i) begin
-        new_pc_en_o = 1'b1;
         pc_sel_o = PC_TRAP;
     end else if (mretM_i) begin
-        new_pc_en_o = 1'b1;
         pc_sel_o = PC_MEPC;
     end else if (csr_writeM_i) begin
         // any CSR write causes a pipeline flush
-        new_pc_en_o = 1'b1;
         pc_sel_o = PC_CSRW;
-    end else if (ex_new_pc_en_i) begin // branch or jump taken
-        new_pc_en_o = 1'b1; 
     end
 end
 
@@ -169,7 +164,7 @@ end
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
 
 wire flush_causeD = csr_writeM_i;
-wire flush_causeE = trapM_i | mretM_i | ex_new_pc_en_i | csr_writeM_i;
+wire flush_causeE = trapM_i | mretM_i | branch_takenE_i | csr_writeM_i;
 wire flush_causeM = trapM_i | mretM_i | csr_writeM_i;
 wire flush_causeW = trapM_i;
 

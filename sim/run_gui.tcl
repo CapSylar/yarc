@@ -109,7 +109,6 @@ add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter_incr;
 # ---------------------------------------------------------
 add wave -divider {DECODE}
 add wave ${CORE}/decode_i/current_plvl_i;
-add wave ${CORE}/decode_i/pc_i;
 add wave ${CORE}/decode_i/instr_i;
 add wave ${CORE}/decode_i/stall_i;
 add wave ${CORE}/decode_i/flush_i;
@@ -118,7 +117,6 @@ add wave ${CORE}/decode_i/regf_rs2_addr_o;
 add wave ${CORE}/decode_i/rs1_data_i;
 add wave ${CORE}/decode_i/rs2_data_i;
 
-add wave -color Gold ${CORE}/decode_i/pc_o;
 add wave -color Gold ${CORE}/decode_i/rs1_data_o;
 add wave -color Gold ${CORE}/decode_i/rs2_data_o;
 add wave -color Gold ${CORE}/decode_i/imm_o;
@@ -126,8 +124,6 @@ add wave -color Gold ${CORE}/decode_i/alu_oper1_src_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper2_src_o;
 add wave -color Gold ${CORE}/decode_i/bnj_oper_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper_o;
-add wave -color Gold ${CORE}/decode_i/write_rd_o;
-add wave -color Gold ${CORE}/decode_i/rd_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs1_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs2_addr_o;
 
@@ -145,30 +141,12 @@ add wave ${CORE}/execute_i/alu_oper1_src_i;
 add wave ${CORE}/execute_i/alu_oper2_src_i;
 add wave ${CORE}/execute_i/alu_oper_i;
 add wave ${CORE}/execute_i/bnj_oper_i;
-add wave ${CORE}/execute_i/instr_valid_i;
-
-add wave ${CORE}/execute_i/write_rd_i;
-add wave ${CORE}/execute_i/rd_addr_i;
-
-add wave ${CORE}/execute_i/new_pc_en_o;
-add wave ${CORE}/execute_i/branch_target_o;
-
-add wave -color Turquoise ${CORE}/execute_i/stall_i;
-add wave -color Turquoise ${CORE}/execute_i/flush_i;
 
 add wave -color Turquoise ${CORE}/execute_i/forward_rs1_i;
 add wave -color Turquoise ${CORE}/execute_i/forward_rs2_i;
 
 add wave -color Turquoise ${CORE}/execute_i/forward_ex_mem_data_i;
 add wave -color Turquoise ${CORE}/execute_i/forward_mem_wb_data_i;
-
-add wave -color Gold ${CORE}/execute_i/alu_result_o;
-add wave -color Gold ${CORE}/execute_i/alu_oper2_o;
-add wave -color Gold ${CORE}/execute_i/pc_o;
-add wave -color Gold ${CORE}/execute_i/instr_valid_o;
-
-add wave -color Gold ${CORE}/execute_i/write_rd_o;
-add wave -color Gold ${CORE}/execute_i/rd_addr_o;
 
 add wave ${CORE}/execute_i/operand1;
 add wave ${CORE}/execute_i/operand2;
@@ -191,14 +169,9 @@ add wave ${CORE}/lsu_i/lsu_wdata_o;
 
 add wave ${CORE}/lsu_i/alu_result_i;
 add wave ${CORE}/lsu_i/alu_oper2_i;
-add wave ${CORE}/lsu_i/write_rd_i;
-add wave ${CORE}/lsu_i/rd_addr_i;
 
 add wave -color Turquoise ${CORE}/lsu_i/stallW_i;
 add wave -color Turquoise ${CORE}/lsu_i/flushW_i;
-
-add wave -color Gold ${CORE}/lsu_i/rd_addr_o;
-add wave -color Gold ${CORE}/lsu_i/alu_result_o;
 
 add wave ${CORE}/lsu_i/*;
 add wave ${CORE}/lsu_i/lrsc_i/*;
@@ -223,7 +196,6 @@ add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/ack_pending_q;
 add wave -divider {WRITE BACK}
 add wave ${CORE}/write_back_i/write_rd_i;
 add wave ${CORE}/write_back_i/result_srcW_i;
-add wave ${CORE}/write_back_i/rd_addr_i;
 add wave ${CORE}/write_back_i/alu_result_i;
 add wave ${CORE}/write_back_i/lsu_rdata_i;
 add wave ${CORE}/write_back_i/csr_rdata_i;
@@ -307,16 +279,16 @@ add wave ${PLATFORM}/mtimer_i/mtimecmp_q;
 # add wave -divider {Platform}
 # add wave ${PLATFORM}/*;
 add wave -divider {VIDEO core}
-add wave ${PLATFORM}/video_core_i/*;
-add wave ${PLATFORM}/video_core_i/video_core_ctrl_i/*;
-add wave ${PLATFORM}/video_core_i/afifo_i/*;
-add wave ${PLATFORM}/video_core_i/fifo_adapter_i/*;
-add wave ${PLATFORM}/video_core_i/video_text_mode_i/text_mode_line_buffer_i/*;
-add wave ${PLATFORM}/video_core_i/video_text_mode_i/text_mode_line_buffer_i/buffer;
-add wave ${PLATFORM}/video_core_i/video_text_mode_i/vga_text_decoder_i/*;
-add wave ${PLATFORM}/video_core_i/video_text_mode_i/*;
-add wave ${PLATFORM}/video_core_i/hdmi_phy_i/*;
-add wave ${PLATFORM}/video_core_i/hdmi_phy_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/video_core_ctrl_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/afifo_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/fifo_adapter_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/video_text_mode_i/text_mode_line_buffer_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/video_text_mode_i/text_mode_line_buffer_i/buffer;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/video_text_mode_i/vga_text_decoder_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/video_text_mode_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/hdmi_phy_i/*;
+add wave -group {VIDEO} ${PLATFORM}/video_core_i/hdmi_phy_i/*;
 
 set ddr3_top ${TOP}/true_ddr3_model_sim/yarc_ddr3_top_i
 set main_xbar ${PLATFORM}/main_xbar_i;

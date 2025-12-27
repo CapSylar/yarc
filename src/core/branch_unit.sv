@@ -11,8 +11,8 @@ import riscv_pkg::*;
     input bnj_oper_t bnj_oper_i,
     input wire [2:0] func3E_i,
     
-    output logic [31:0] branch_target_o,
-    output logic branch_taken_o
+    output logic [31:0] branch_targetE_o,
+    output logic branch_takenE_o
 );
 
 logic is_cmp_signed;
@@ -77,18 +77,18 @@ wire [31:0] register_offset = rs1ValueE_i + imm_i;
 
 always_comb begin
     unique case (bnj_oper_i) 
-        BNJ_JAL, BNJ_JALR: branch_taken_o = 1'b1;
-        BNJ_BRANCH:        branch_taken_o = is_cond_branch_taken;
-        default:           branch_taken_o = 1'b0;
+        BNJ_JAL, BNJ_JALR: branch_takenE_o = 1'b1;
+        BNJ_BRANCH:        branch_takenE_o = is_cond_branch_taken;
+        default:           branch_takenE_o = 1'b0;
     endcase
 end
 
 always_comb begin
     unique case (bnj_oper_i)
-        BNJ_JAL, BNJ_BRANCH: branch_target_o = pc_offset;
+        BNJ_JAL, BNJ_BRANCH: branch_targetE_o = pc_offset;
 
         // BNJ_JALR
-        default:             branch_target_o = register_offset;
+        default:             branch_targetE_o = register_offset;
     endcase
 end
 
