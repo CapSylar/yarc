@@ -1,6 +1,3 @@
 [submodule "sim/riscv-tests"]
 	path = sim/riscv-tests
 	url = https://github.com/riscv-software-src/riscv-tests.git
-[submodule "src/peripherals/wbuart32"]
-	path = src/peripherals/wbuart32
-	url = https://github.com/ZipCPU/wbuart32.git

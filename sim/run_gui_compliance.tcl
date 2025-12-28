@@ -121,7 +121,6 @@ add wave ${CORE}/decode_i/regf_rs2_addr_o;
 add wave ${CORE}/decode_i/rs1_data_i;
 add wave ${CORE}/decode_i/rs2_data_i;
 
-add wave -color Gold ${CORE}/decode_i/pc_o;
 add wave -color Gold ${CORE}/decode_i/rs1_data_o;
 add wave -color Gold ${CORE}/decode_i/rs2_data_o;
 add wave -color Gold ${CORE}/decode_i/imm_o;
@@ -129,8 +128,6 @@ add wave -color Gold ${CORE}/decode_i/alu_oper1_src_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper2_src_o;
 add wave -color Gold ${CORE}/decode_i/bnj_oper_o;
 add wave -color Gold ${CORE}/decode_i/alu_oper_o;
-add wave -color Gold ${CORE}/decode_i/write_rd_o;
-add wave -color Gold ${CORE}/decode_i/rd_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs1_addr_o;
 add wave -color Gold ${CORE}/decode_i/rs2_addr_o;
 
@@ -144,13 +141,6 @@ add wave ${CORE}/execute_i/alu_oper1_src_i;
 add wave ${CORE}/execute_i/alu_oper2_src_i;
 add wave ${CORE}/execute_i/alu_oper_i;
 add wave ${CORE}/execute_i/bnj_oper_i;
-add wave ${CORE}/execute_i/instr_valid_i;
-
-add wave ${CORE}/execute_i/write_rd_i;
-add wave ${CORE}/execute_i/rd_addr_i;
-
-add wave ${CORE}/execute_i/new_pc_en_o;
-add wave ${CORE}/execute_i/branch_target_o;
 
 add wave -color Turquoise ${CORE}/execute_i/stallM_i;
 add wave -color Turquoise ${CORE}/execute_i/flushM_i;
@@ -161,18 +151,12 @@ add wave -color Turquoise ${CORE}/execute_i/forward_rs2_i;
 add wave -color Turquoise ${CORE}/execute_i/forward_ex_mem_data_i;
 add wave -color Turquoise ${CORE}/execute_i/forward_mem_wb_data_i;
 
-add wave -color Gold ${CORE}/execute_i/alu_result_o;
-add wave -color Gold ${CORE}/execute_i/alu_oper2_o;
-add wave -color Gold ${CORE}/execute_i/pc_o;
-add wave -color Gold ${CORE}/execute_i/instr_valid_o;
-
-add wave -color Gold ${CORE}/execute_i/write_rd_o;
-add wave -color Gold ${CORE}/execute_i/rd_addr_o;
-
 add wave ${CORE}/execute_i/operand1;
 add wave ${CORE}/execute_i/operand2;
 
 add wave -group {ALL EXECUTE} ${CORE}/execute_i/*;
+add wave -group {ALL EXECUTE} ${CORE}/execute_i/branch_unit_i/*;
+
 # ---------------------------------------------------------
 add wave -group {MDU} ${CORE}/mdu_i/*;
 add wave -group {MDU} ${CORE}/mdu_i/multiplier_i/*;
@@ -184,30 +168,11 @@ add wave ${CORE}/lsu_i/lsu_req_o;
 add wave ${CORE}/lsu_i/lsu_addr_o;
 add wave ${CORE}/lsu_i/lsu_we_o;
 add wave ${CORE}/lsu_i/lsu_rdata_i;
-add wave ${CORE}/lsu_i/lsu_wsel_byte_o;
+add wave ${CORE}/lsu_i/lsu_sel_o;
 add wave ${CORE}/lsu_i/lsu_wdata_o;
-
-add wave ${CORE}/lsu_i/alu_result_i;
-add wave ${CORE}/lsu_i/alu_oper2_i;
-add wave ${CORE}/lsu_i/write_rd_i;
-add wave ${CORE}/lsu_i/rd_addr_i;
-
-# add wave ${CORE}/lsu_i/csr_wdata_i;
-# add wave ${CORE}/lsu_i/csr_waddr_i;
-# add wave ${CORE}/lsu_i/is_csr_i;
-# add wave ${CORE}/lsu_i/csr_we_i;
 
 add wave -color Turquoise ${CORE}/lsu_i/stallW_i;
 add wave -color Turquoise ${CORE}/lsu_i/flushW_i;
-
-# add wave -color Gold ${CORE}/lsu_i/is_csr_o;
-# add wave -color Gold ${CORE}/lsu_i/csr_we_o;
-# add wave -color Gold ${CORE}/lsu_i/csr_wdata_o;
-# add wave -color Gold ${CORE}/lsu_i/csr_waddr_o;
-
-add wave -color Gold ${CORE}/lsu_i/write_rd_o;
-add wave -color Gold ${CORE}/lsu_i/rd_addr_o;
-add wave -color Gold ${CORE}/lsu_i/alu_result_o;
 
 add wave ${CORE}/lsu_i/*;
 add wave ${CORE}/lsu_i/lrsc_i/*;
@@ -219,7 +184,7 @@ add wave -group {LSU WISHBONE} -color Gold ${CORE}/wishbone_lsu_driver_i/wb_if/*
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/we_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/addr_i;
-add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wsel_byte_i;
+add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/sel_byte_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wdata_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_done_o;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/rdata_o;
@@ -233,7 +198,7 @@ add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/ack_pending_q;
 add wave -divider {WRITE BACK}
 add wave ${CORE}/write_back_i/write_rd_i;
 add wave ${CORE}/write_back_i/result_srcW_i;
-add wave ${CORE}/write_back_i/rd_addr_i;
+add wave ${CORE}/write_back_i/rdW_i;
 add wave ${CORE}/write_back_i/alu_result_i;
 add wave ${CORE}/write_back_i/lsu_rdata_i;
 add wave ${CORE}/write_back_i/csr_rdata_i;

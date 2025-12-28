@@ -97,7 +97,7 @@ logic lsu_lock;
 logic [31:0] lsu_addr;
 logic lsu_req_done;
 logic [31:0] lsu_rdata;
-logic [3:0] lsu_wsel_byte;
+logic [3:0] lsu_sel;
 logic [31:0] lsu_wdata;
 logic [31:0] rs1ValueM;
 logic csr_writeM, csr_readM;
@@ -433,7 +433,7 @@ lsu lsu_i
     .lsu_we_o(lsu_we),
     .lsu_lock_o(lsu_lock),
     // write port
-    .lsu_wsel_byte_o(lsu_wsel_byte),
+    .lsu_sel_o(lsu_sel),
     .lsu_wdata_o(lsu_wdata),
     .lsu_req_done_i(lsu_req_done),
     .lsu_rdata_i(lsu_rdata),
@@ -474,7 +474,7 @@ wishbone_lsu_driver wishbone_lsu_driver_i
     .we_i(lsu_we),
     .lock_i(lsu_lock),
     .addr_i(lsu_addr),
-    .wsel_byte_i(lsu_wsel_byte),
+    .sel_byte_i(lsu_sel),
     .wdata_i(lsu_wdata),
 
     .req_done_o(lsu_req_done),

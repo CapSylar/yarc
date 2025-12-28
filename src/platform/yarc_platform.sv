@@ -160,43 +160,39 @@ led_driver led_driver_i
     .led_status_o(led_status_o)
 );
 
-logic uart_rx_int, uart_tx_int;
-logic uart_rxfifo_int, uart_txfifo_int;
+logic uart_int;
 
-// wb_uart32
-wbuart 
-#(.INITIAL_SETUP(WBUART_INITIAL_SETUP),
-  .LGFLEN(WB_UART_LGFLEN),
-  .HARDWARE_FLOW_CONTROL_PRESENT(WB_UART_HW_FLOW_CTR_PR))
-wbuart_i
-(
-    .i_clk(clk_i),
-    .i_reset(~rstn_i),
+uart_top uart_top_i (
 
-    // wishbone connections
-    .i_wb_cyc(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].cyc),
-    .i_wb_stb(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].stb),
-    .i_wb_we(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].we),
-    .i_wb_addr(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].addr[1:0]),
-    .i_wb_data(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].wdata),
-    .i_wb_sel(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].sel),
-    
-    .o_wb_stall(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].stall),
-    .o_wb_ack(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].ack),
-    .o_wb_data(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].rdata),
+    .wb_clk_i(clk_i),
+    .wb_rst_i(~rstn_i),
 
-    // uart connections
-    .i_uart_rx(uart_rx_i),
-    .o_uart_tx(uart_tx_o),
-    .i_cts_n('0),
-    .o_rts_n(),
+    .wb_cyc_i(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].cyc),
+    .wb_stb_i(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].stb),
+    .wb_we_i (periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].we),
+    .wb_adr_i({periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].addr[2:0], 2'b0}),
+    .wb_dat_i(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].wdata),
+    .wb_sel_i(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].sel),
 
-    // uart interrupts
-    .o_uart_rx_int(uart_rx_int),
-    .o_uart_tx_int(uart_tx_int),
-    .o_uart_rxfifo_int(uart_rxfifo_int),
-    .o_uart_txfifo_int(uart_txfifo_int)
+    .wb_ack_o(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].ack),
+    .wb_dat_o(periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].rdata),
+
+    .stx_pad_o(uart_tx_o),
+    .srx_pad_i(uart_rx_i),
+
+    .rts_pad_o(),
+    .cts_pad_i(1'b0),
+    .dtr_pad_o(),
+    .dsr_pad_i(1'b0),
+    .ri_pad_i(1'b0),
+    .dcd_pad_i(1'b0),
+
+    .int_o(uart_int)
 );
+
+assign periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].stall = 
+    periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].stb & ~periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].ack;
+
 // zero out the rest of the control lines
 assign periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].err = '0;
 assign periph_slave_wb_if[PERIPH_XBAR_WBUART_SLAVE_IDX].rty = '0;
@@ -251,7 +247,7 @@ core_top core_i
 
     // interrupts
     .irq_timer_i(irq_timer),
-    .irq_external_i('0)
+    .irq_external_i(uart_int)
 );
 
 endmodule: yarc_platform

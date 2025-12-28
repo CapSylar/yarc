@@ -13,7 +13,7 @@ import riscv_pkg::*;
     output logic [31:0] lsu_addr_o,
     output logic lsu_we_o,
     output logic lsu_lock_o,
-    output logic [3:0] lsu_wsel_byte_o,
+    output logic [3:0] lsu_sel_o,
     output logic [31:0] lsu_wdata_o,
     input wire [31:0] lsu_rdata_i,
     input wire lsu_req_done_i,
@@ -41,9 +41,8 @@ import riscv_pkg::*;
 
 wire [31:0] addr = lsu_addr_o;
 wire [31:0] to_write = alu_oper2_i;
-logic [3:0] wsel_byte;
+logic [3:0] sel_byte;
 logic [31:0] wdata;
-logic is_write;
 
 wire is_amo = (atomic_opM_i == ATOMIC_AMO);
 
@@ -51,34 +50,35 @@ wire is_amo = (atomic_opM_i == ATOMIC_AMO);
 wire is_half_unaligned = (mem_opM_i.mem_width == 2'b01) & (addr[0] == 1'b1);
 wire is_word_unaligned = (mem_opM_i.mem_width == 2'b10) & (|addr[1:0]);
 
-wire misaligned_trap = is_half_unaligned | is_word_unaligned;
-assign load_misaligned_trapM_o = misaligned_trap & mem_opM_i.mem_rw[1];
-assign store_misaligned_trapM_o = misaligned_trap & mem_opM_i.mem_rw[0];
+wire is_write = mem_opM_i.mem_rw[0];
+wire is_read =  mem_opM_i.mem_rw[1];
 
-assign is_write = mem_opM_i.mem_rw[0];
+wire misaligned_trap = is_half_unaligned | is_word_unaligned;
+assign load_misaligned_trapM_o = misaligned_trap & is_read;
+assign store_misaligned_trapM_o = misaligned_trap & is_write;
 
 // format the write data
 always_comb
 begin
-    wsel_byte = '0;
+    sel_byte = '0;
     wdata = '0;
 
     case(mem_opM_i.mem_width)
         2'b00: // byte
         begin
-            wsel_byte = 4'b0001 << addr[1:0];
+            sel_byte = 4'b0001 << addr[1:0];
             wdata = to_write << (addr[1:0] * 8);
         end
 
         2'b01: // halfword
         begin
-            wsel_byte = 4'b0011 << (addr[1] * 2);
+            sel_byte = 4'b0011 << (addr[1] * 2);
             wdata = to_write << (addr[1] * 16);
         end
 
         2'b10: // word
         begin
-            wsel_byte = 4'b1111;
+            sel_byte = 4'b1111;
             wdata = to_write;
         end
 
@@ -145,7 +145,7 @@ logic done;
 // when not to start a memory request
 wire can_issue_req = ~(trapM_i | flushW_i);
 logic is_fail_scM;
-wire [1:0] gated_rw = {mem_opM_i.mem_rw[1] , (mem_opM_i.mem_rw[0] & ~is_fail_scM)};
+wire [1:0] gated_rw = {is_read , (is_write & ~is_fail_scM)};
 
 typedef enum {IDLE, AMO_WRITE, WAITING_FOR_DONE} state_t;
 state_t state, next;
@@ -249,9 +249,7 @@ amoalu amoalu_i (
 // lsu outputs
 assign lsu_addr_o = alu_result_i;
 assign lsu_wdata_o = is_amo ? amoalu_result : wdata;
-assign lsu_wsel_byte_o = wsel_byte;
-// assign lsu_we_o = is_write;
-// assign lsu_we_o = lsu_we;
+assign lsu_sel_o = sel_byte;
 assign lsu_lock_o = is_amo;
 
 flopr #(1) amo_state_flop (clk_i, rstn_i, amo_state_d, amo_state_q);

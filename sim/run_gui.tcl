@@ -152,6 +152,7 @@ add wave ${CORE}/execute_i/operand1;
 add wave ${CORE}/execute_i/operand2;
 
 add wave -group {ALL EXECUTE} ${CORE}/execute_i/*;
+add wave -group {ALL EXECUTE} ${CORE}/execute_i/branch_unit_i/*;
 
 # ---------------------------------------------------------
 add wave -group {MDU} ${CORE}/mdu_i/*;
@@ -164,7 +165,7 @@ add wave ${CORE}/lsu_i/lsu_req_o;
 add wave ${CORE}/lsu_i/lsu_addr_o;
 add wave ${CORE}/lsu_i/lsu_we_o;
 add wave ${CORE}/lsu_i/lsu_rdata_i;
-add wave ${CORE}/lsu_i/lsu_wsel_byte_o;
+add wave ${CORE}/lsu_i/lsu_sel_o;
 add wave ${CORE}/lsu_i/lsu_wdata_o;
 
 add wave ${CORE}/lsu_i/alu_result_i;
@@ -182,7 +183,7 @@ add wave -group {LSU WISHBONE} -color Gold ${CORE}/wishbone_lsu_driver_i/wb_if/*
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/we_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/addr_i;
-add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wsel_byte_i;
+add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/sel_byte_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/wdata_i;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/req_done_o;
 add wave -group {LSU} ${CORE}/wishbone_lsu_driver_i/rdata_o;
@@ -362,6 +363,12 @@ add wave -group {Simple WB Memory} ${TOP}/replace_with_wb_model/wb_sim_memory_i/
 # add wave -group {DDR3 External Interface} ${ddr3_top}/ddr3_top/o_wb_stall;
 # add wave -group {DDR3 External Interface} ${ddr3_top}/ddr3_top/o_wb_ack;
 # add wave -group {DDR3 External Interface} ${ddr3_top}/ddr3_top/o_wb_data;
+
+add wave ${PLATFORM}/*;
+add wave ${PLATFORM}/uart_top_i/*;
+add wave ${PLATFORM}/uart_top_i/regs/*;
+add wave ${PLATFORM}/uart_top_i/regs/transmitter/*;
+add wave ${PLATFORM}/uart_top_i/wb_interface/*;
 
 # ---------------------------------------------------------
 # disable creation of the transcript file

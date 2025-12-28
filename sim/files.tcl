@@ -17,10 +17,19 @@ ${PRJ_DIR}/generic/flop/flopr_type.sv
 ${PRJ_DIR}/generic/mux.sv
 
 // peripherals
-${PRJ_DIR}/peripherals/wbuart32/rtl/ufifo.v
-${PRJ_DIR}/peripherals/wbuart32/rtl/rxuart.v
-${PRJ_DIR}/peripherals/wbuart32/rtl/txuart.v
-${PRJ_DIR}/peripherals/wbuart32/rtl/wbuart.v
+// NS16650a UART
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/raminfr.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/timescale.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_debug_if.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_defines.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_receiver.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_regs.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_rfifo.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_sync_flops.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_tfifo.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_top.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_transmitter.v
+${PRJ_DIR}/peripherals/uart16550/rtl/verilog/uart_wb.v
 
 ${PRJ_DIR}/peripherals/video/video_pkg.sv
 ${PRJ_DIR}/peripherals/video/video_core_ctrl.sv
@@ -113,8 +122,8 @@ ${PRJ_DIR}/ddr3_mem_controller/sim_files/ddr3_sim_model.sv
 ${PRJ_DIR}/ddr3_mem_controller/sim_files/wb_sim_memory.sv
 
 // testbenches
-${PRJ_DIR}/peripherals/wbuart32/rtl/rxuartlite.v
-${PRJ_DIR}/peripherals/wbuart32/rtl/txuartlite.v
+${PRJ_DIR}/utils/rxuartlite.v
+${PRJ_DIR}/utils/txuartlite.v
 ${PRJ_DIR}/testbenches/rxuart_printer.sv
 ${PRJ_DIR}/testbenches/txuart_sender.sv
 ${PRJ_DIR}/testbenches/core_with_mem.sv

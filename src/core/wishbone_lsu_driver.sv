@@ -16,7 +16,7 @@ import riscv_pkg::*;
     input wire we_i,
     input wire lock_i,
     input wire [31:0] addr_i,
-    input wire [3:0] wsel_byte_i,
+    input wire [3:0] sel_byte_i,
     input wire [31:0] wdata_i,
 
     output logic req_done_o,
@@ -137,7 +137,7 @@ assign wb_if.cyc =   wb_cyc;
 assign wb_if.stb =   wb_stb;
 assign wb_if.we =    saved_we;
 assign wb_if.addr =  wb_addr[31:2];
-assign wb_if.sel =   saved_we ? wsel_byte_i : 4'hf;
+assign wb_if.sel =   sel_byte_i;
 assign wb_if.wdata = wb_wdata;
 
 endmodule: wishbone_lsu_driver
