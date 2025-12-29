@@ -54,8 +54,9 @@ core_top core_i
     // Core <-> IMEM
     .instr_fetch_wb_if(imem_wb_if.MASTER),
 
-    .irq_timer_i('0),
-    .irq_external_i('0)
+    .m_timer_interrupt_i('0),
+    .m_software_interrupt_i('0),
+    .m_external_interrupt_i('0)
 );
 
 `define TRAP_LINE core_i.sys_instrM;

@@ -23,8 +23,9 @@ import csr_pkg::*;
     wishbone_if.MASTER instr_fetch_wb_if,
 
     // interrupts
-    input irq_timer_i,
-    input irq_external_i
+    input m_timer_interrupt_i,
+    input m_software_interrupt_i,
+    input m_external_interrupt_i
 );
 
 // Signal definitions
@@ -282,8 +283,9 @@ privileged privileged_i
     // mret, traps...
     .exc_pc_i(exc_pc),
     // interrupts
-    .irq_timer_i(irq_timer_i),
-    .irq_external_i(irq_external_i),
+    .m_timer_interrupt_i(m_timer_interrupt_i),
+    .m_software_interrupt_i(m_software_interrupt_i),
+    .m_external_interrupt_i(m_external_interrupt_i),
 
     // used by the performance counters
     .instr_ret_i(instr_validW && !stallW),

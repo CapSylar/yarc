@@ -47,68 +47,70 @@ add wave -color Gold ${CORE}/reg_file_i/rs2_data_o;
 
 set CS_REGISTERS_PATH ${CORE}/privileged_i/cs_registers_i;
 
-add wave -divider {CS REGISTERS}
-add wave ${CS_REGISTERS_PATH}/csr_re_i;
-add wave ${CS_REGISTERS_PATH}/csr_addr;
-add wave ${CS_REGISTERS_PATH}/csr_rdata_o;
+# add wave -divider {CS REGISTERS}
+# add wave ${CS_REGISTERS_PATH}/csr_re_i;
+# add wave ${CS_REGISTERS_PATH}/csr_addr;
+# add wave ${CS_REGISTERS_PATH}/csr_rdata_o;
 
-add wave ${CS_REGISTERS_PATH}/csr_we_i;
-add wave ${CS_REGISTERS_PATH}/csr_wdata_i;
+# add wave ${CS_REGISTERS_PATH}/csr_we_i;
+# add wave ${CS_REGISTERS_PATH}/csr_wdata_i;
 
-add wave ${CS_REGISTERS_PATH}/csr_mepc_o;
-add wave ${CS_REGISTERS_PATH}/csr_mtvec_o;
-add wave ${CS_REGISTERS_PATH}/csr_mstatus_o;
-add wave ${CS_REGISTERS_PATH}/irq_pending_o;
+# add wave ${CS_REGISTERS_PATH}/csr_mepc_o;
+# add wave ${CS_REGISTERS_PATH}/csr_mtvec_o;
+# add wave ${CS_REGISTERS_PATH}/csr_mstatus_o;
+# add wave ${CS_REGISTERS_PATH}/irq_pending_o;
 
-# ret, traps...
-add wave ${CS_REGISTERS_PATH}/is_trap_i;
+# # ret, traps...
+# add wave ${CS_REGISTERS_PATH}/is_trap_i;
 
-# interrupts
-add wave ${CS_REGISTERS_PATH}/irq_software_i;
-add wave ${CS_REGISTERS_PATH}/irq_timer_i;
-add wave ${CS_REGISTERS_PATH}/irq_external_i;
+# # interrupts
+# add wave ${CS_REGISTERS_PATH}/irq_software_i;
+# add wave ${CS_REGISTERS_PATH}/irq_timer_i;
+# add wave ${CS_REGISTERS_PATH}/irq_external_i;
 
-add wave ${CS_REGISTERS_PATH}/current_plvl_q;
-add wave ${CS_REGISTERS_PATH}/current_plvl_d;
+# add wave ${CS_REGISTERS_PATH}/current_plvl_q;
+# add wave ${CS_REGISTERS_PATH}/current_plvl_d;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mstatus_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mscratch_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mepc_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mie_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mip_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mip_d;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_wen;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_wen;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtval_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mtvec_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcause_q;
 
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_we;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_d;
-add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_q;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_we;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_d;
+# add wave -group {CSRs} ${CS_REGISTERS_PATH}/mcountinhibit_q;
 
-add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter;
-add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter_we;
-add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounterh_we;
-add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter_incr;
+# add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter;
+# add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter_we;
+# add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounterh_we;
+# add wave -group {Perf Counters} ${CS_REGISTERS_PATH}/mhpmcounter_incr;
+
+add wave -group {ALL CSR MODULE} ${CS_REGISTERS_PATH}/*;
 
 # ---------------------------------------------------------
 add wave -divider {DECODE}
@@ -232,9 +234,6 @@ add wave -divider {PRIVILEGED}
 add wave ${CORE}/privileged_i/*;
 
 add wave ${CORE}/*;
-
-add wave ${TOP}/mem_i/*;
-add wave ${TOP}/mem_i/mem;
 
 # ---------------------------------------------------------
 # disable creation of the transcript file

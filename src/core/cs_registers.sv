@@ -149,10 +149,26 @@ csr #(.Width($bits(mtvec_t)), .ResetValue('0)) csr_mtvec
 );
 
 // MIP: Machine Interrupt Pending
-irqs_t mip_d;
-assign mip_d.m_software = irq_software_i;
-assign mip_d.m_timer = irq_timer_i;
-assign mip_d.m_external = irq_external_i;
+irqs_t mip_d, mip_q, mip;
+logic mip_we;
+
+csr #(.Width($bits(irqs_t)), .ResetValue('0)) csr_mip
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+    .wr_en_i(mip_we),
+    .wr_data_i(mip_d),
+    .rd_data_o(mip_q)
+);
+
+// mip is a mix of saved and driven bits
+assign mip = '{
+    s_software: mip_q.s_software,
+
+    m_software: irq_software_i,
+    m_timer:    irq_timer_i,
+    m_external: irq_external_i
+};
 
 irqs_t mie_d, mie_q;
 logic mie_we;
@@ -293,59 +309,71 @@ always_comb begin: csr_read
     csr_rdata = '0;
     illegal_csr_read = 1'b0;
 
-    unique case (csr_addr)
-        CSR_MISA: csr_rdata = misa_q;
-        CSR_MVENDORID: csr_rdata = mvendorid_q;
-        CSR_MHARTID: csr_rdata = MHART_ID;
-        CSR_MIMPID: csr_rdata = mimpid_q;
+    // catch the pmps
+    if (csr_addr >= CSR_PMPADDR0 && csr_addr <= CSR_PMPADDR15) begin
+        // zeroes for now
+    end else if (csr_addr >= CSR_PMPCFG0 && csr_addr <= CSR_PMPCFG3) begin
+        // zeroes for now
+    end else begin
+        unique case (csr_addr)
+            CSR_MISA: csr_rdata = misa_q;
+            CSR_MVENDORID: csr_rdata = mvendorid_q;
+            CSR_MHARTID: csr_rdata = MHART_ID;
+            CSR_MIMPID: csr_rdata = mimpid_q;
+            CSR_MARCHID: csr_rdata = marchid_q;
 
-        CSR_MSCRATCH: csr_rdata = mscratch_q;
-        CSR_MSTATUS:
-        begin
-            csr_rdata[CSR_MSTATUS_MIE_BIT] = mstatus_q.mie;
-            csr_rdata[CSR_MSTATUS_MPIE_BIT] = mstatus_q.mpie;
-            csr_rdata[CSR_MSTATUS_MPP_BIT_HIGH:CSR_MSTATUS_MPP_BIT_LOW] = mstatus_q.mpp;
-            csr_rdata[CSR_MSTATUS_MPRV_BIT] = mstatus_q.mprv;
-        end
-        CSR_MSTATUSH: csr_rdata = '0;
-        CSR_MTVEC: csr_rdata = mtvec_q;
-        CSR_MTVAL: csr_rdata = mtval_q;
-        CSR_MEPC: csr_rdata = mepc_q;
-        CSR_MIE:
-        begin
-            csr_rdata[CSR_MSI_BIT] = mie_q.m_software;
-            csr_rdata[CSR_MTI_BIT] = mie_q.m_timer;
-            csr_rdata[CSR_MEI_BIT] = mie_q.m_external;
-        end
-        CSR_MIP:
-        begin
-            csr_rdata[CSR_MSI_BIT] = mip_d.m_software;
-            csr_rdata[CSR_MTI_BIT] = mip_d.m_timer;
-            csr_rdata[CSR_MEI_BIT] = mip_d.m_external;
-        end
-        CSR_MCAUSE:
-        begin
-            csr_rdata[CSR_MCAUSE_IRQ_BIT] = mcause_q.irq;
-            csr_rdata[CSR_MCAUSE_CODE_BIT_HIGH:CSR_MCAUSE_CODE_BIT_LOW] = mcause_q.trap_code;
-        end
-        CSR_MCOUNTINHIBIT: csr_rdata = mcountinhibit_q;
-        CSR_MCOUNTEREN: csr_rdata = '0;
+            CSR_MSCRATCH: csr_rdata = mscratch_q;
+            CSR_MSTATUS:
+            begin
+                csr_rdata[CSR_MSTATUS_MIE_BIT] = mstatus_q.mie;
+                csr_rdata[CSR_MSTATUS_MPIE_BIT] = mstatus_q.mpie;
+                csr_rdata[CSR_MSTATUS_MPP_BIT_HIGH:CSR_MSTATUS_MPP_BIT_LOW] = mstatus_q.mpp;
+                csr_rdata[CSR_MSTATUS_MPRV_BIT] = mstatus_q.mprv;
+            end
+            CSR_MSTATUSH: csr_rdata = '0;
+            CSR_MTVEC: csr_rdata = mtvec_q;
+            CSR_MTVAL: csr_rdata = mtval_q;
+            CSR_MEPC: csr_rdata = mepc_q;
+            CSR_MIE:
+            begin
+                csr_rdata[CSR_MSI_BIT] = mie_q.m_software;
+                csr_rdata[CSR_MTI_BIT] = mie_q.m_timer;
+                csr_rdata[CSR_MEI_BIT] = mie_q.m_external;
+            end
+            CSR_MIP:
+            begin
+                csr_rdata[CSR_MSI_BIT] = mip_d.m_software;
+                csr_rdata[CSR_MTI_BIT] = mip_d.m_timer;
+                csr_rdata[CSR_MEI_BIT] = mip_d.m_external;
+            end
+            CSR_MCAUSE:
+            begin
+                csr_rdata[CSR_MCAUSE_IRQ_BIT] = mcause_q.irq;
+                csr_rdata[CSR_MCAUSE_CODE_BIT_HIGH:CSR_MCAUSE_CODE_BIT_LOW] = mcause_q.trap_code;
+            end
+            CSR_MCOUNTINHIBIT: csr_rdata = mcountinhibit_q;
+            CSR_MCOUNTEREN: csr_rdata = '0;
 
-        // Performance Counters
-        CSR_MCYCLE, CSR_MINSTRET: // lower half
-        begin
-            csr_rdata = mhpmcounter[mhpmcounter_idx][31:0];
-        end
+            // Performance Counters
+            CSR_MCYCLE, CSR_MINSTRET: // lower half
+            begin
+                csr_rdata = mhpmcounter[mhpmcounter_idx][31:0];
+            end
 
-        CSR_MCYCLEH, CSR_MINSTRETH: // upper half
-        begin
-            csr_rdata = mhpmcounter[mhpmcounter_idx][63:32];
-        end
-        default: illegal_csr_read = 1'b1;
-    endcase
+            CSR_MCYCLEH, CSR_MINSTRETH: // upper half
+            begin
+                csr_rdata = mhpmcounter[mhpmcounter_idx][63:32];
+            end
+            default: illegal_csr_read = 1'b1;
+        endcase
+    end
 end
 
-wire illegal_csr_write = (csr_addr == CSR_MISA) | (csr_addr == CSR_MVENDORID) | (csr_addr == CSR_MHARTID) | (csr_addr == CSR_MIMPID);
+wire illegal_csr_write = (csr_addr == CSR_MISA) | 
+                         (csr_addr == CSR_MVENDORID) | 
+                         (csr_addr == CSR_MHARTID) | 
+                         (csr_addr == CSR_MIMPID) |
+                         (csr_addr == CSR_MARCHID);
 
 // write logic
 always_comb begin: csr_write
@@ -366,6 +394,9 @@ always_comb begin: csr_write
 
     mie_we = 1'b0;
     mie_d = mie_q;
+
+    mip_we = 1'b0;
+    mip_d = mip_q;
 
     mepc_we = 1'b0;
     mepc_d = mepc_q;
@@ -409,9 +440,20 @@ always_comb begin: csr_write
             begin
                 mie_we = 1'b1;
                 mie_d = '{
+                    s_software: csr_wdata_i[CSR_SSI_BIT],
                     m_software: csr_wdata_i[CSR_MSI_BIT],
                     m_timer: csr_wdata_i[CSR_MTI_BIT],
                     m_external: csr_wdata_i[CSR_MEI_BIT]
+                };
+            end
+            CSR_MIP:
+            begin
+                mip_we =  1'b1;
+                mip_d = '{
+                    s_software: csr_wdata_i[CSR_SSI_BIT],
+                    m_software: '0,
+                    m_timer: '0,
+                    m_external: '0
                 };
             end
             CSR_MEPC:
@@ -501,7 +543,7 @@ assign csr_mepc_o = mepc_q;
 assign csr_mtvec_o = mtvec_q;
 assign csr_mstatus_o = mstatus_q;
 assign current_plvl_o = current_plvl_q;
-assign irq_pending_o = mip_d & mie_q;
+assign irq_pending_o = mip & mie_q;
 
 assign illegal_csr_accessM_o = (illegal_csr_read & csr_re_i) | (illegal_csr_write & csr_we_ungated_i);
 

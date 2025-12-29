@@ -28,24 +28,24 @@ localparam logic [MAIN_WB_AW-1:0] PERIPHERALS_BASE_ADDR = 32'hA000_0000 >> UNUSE
 localparam logic [MAIN_WB_AW-1:0] PERIPHERALS_MASK = 32'hF000_0000 >> UNUSED_BITS;
 
 // the second half for peripherals
-// MTIMER
-// 8 bytes for mtimer and 8 bytes for mtimecmp
-localparam logic [MAIN_WB_AW-1:0] MTIMER_BASE_ADDR =  32'hA000_0000 >> UNUSED_BITS;
-localparam logic [MAIN_WB_AW-1:0] MTIMER_MASK =       32'hFFFF_FFF0 >> UNUSED_BITS;
 
-// LED DRIVER
-// 4 bytes
-localparam logic [MAIN_WB_AW-1:0] LED_DRIVER_BASE_ADDR =  32'hA000_0010 >> UNUSED_BITS;
-localparam logic [MAIN_WB_AW-1:0] LED_DRIVER_MASK =       32'hFFFF_FFFC >> UNUSED_BITS;
+// Sifive compatible CLINT
+localparam logic [MAIN_WB_AW-1:0] MTIMER_BASE_ADDR =  32'hA000_0000 >> UNUSED_BITS;
+localparam logic [MAIN_WB_AW-1:0] MTIMER_MASK =       32'hFFFF_0000 >> UNUSED_BITS;
 
 // WBUART
 // 4 bytes * 8 = 32 bytes
-localparam logic [MAIN_WB_AW-1:0] WBUART_BASE_ADDR =      32'hA000_0020 >> UNUSED_BITS;
+localparam logic [MAIN_WB_AW-1:0] WBUART_BASE_ADDR =      32'hA100_0000 >> UNUSED_BITS;
 localparam logic [MAIN_WB_AW-1:0] WBUART_MASK =           32'hFFFF_FFE0 >> UNUSED_BITS;
+
+// LED DRIVER
+// 4 bytes
+localparam logic [MAIN_WB_AW-1:0] LED_DRIVER_BASE_ADDR =  32'hA100_0020 >> UNUSED_BITS;
+localparam logic [MAIN_WB_AW-1:0] LED_DRIVER_MASK =       32'hFFFF_FFFC >> UNUSED_BITS;
 
 // VIDEO CORE
 // 4 bytes * 8 = 32 bytes
-localparam logic [MAIN_WB_AW-1:0] VIDEO_BASE_ADDR =        32'hA000_0040 >> UNUSED_BITS;
+localparam logic [MAIN_WB_AW-1:0] VIDEO_BASE_ADDR =        32'hA100_0030 >> UNUSED_BITS;
 localparam logic [MAIN_WB_AW-1:0] VIDEO_MASK =             32'hFFFF_FFE0 >> UNUSED_BITS;
 
 // **************************************************************************************

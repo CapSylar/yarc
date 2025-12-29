@@ -135,18 +135,19 @@ periph_xbar periph_xbar_i
 );
 
 // interrupt lines
-logic irq_timer;
-logic irq_external = '0;
+logic m_timer_interrupt;
+logic m_software_interrupt;
 
 // mtimer
-mtimer mtimer_i
+clint clint_i
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
 
     .wb_if(periph_slave_wb_if[PERIPH_XBAR_MTIMER_SLAVE_IDX]),
 
-    .timer_int_o(irq_timer)
+    .m_timer_interrupt_o(m_timer_interrupt),
+    .m_software_interrupt_o(m_software_interrupt)
 );
 
 // led driver
@@ -246,8 +247,9 @@ core_top core_i
     .instr_fetch_wb_if(instr_fetch_wb_if),
 
     // interrupts
-    .irq_timer_i(irq_timer),
-    .irq_external_i(uart_int)
+    .m_timer_interrupt_i(m_timer_interrupt),
+    .m_software_interrupt_i(m_software_interrupt),
+    .m_external_interrupt_i(uart_int)
 );
 
 endmodule: yarc_platform

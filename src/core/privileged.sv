@@ -43,8 +43,9 @@ import csr_pkg::*;
     // mret, traps...
     input wire [31:0] exc_pc_i,
     // interrupts
-    input wire irq_timer_i,
-    input wire irq_external_i,
+    input wire m_timer_interrupt_i,
+    input wire m_software_interrupt_i,
+    input wire m_external_interrupt_i,
 
     // used by the performance counters
     input wire instr_ret_i,
@@ -115,6 +116,7 @@ always_comb
 begin
     interrupt_code = '0;
     unique case (1'b1)
+        irq_pending.s_software: interrupt_code = CSR_SSI_BIT;
         irq_pending.m_software: interrupt_code = CSR_MSI_BIT;
         irq_pending.m_timer:    interrupt_code = CSR_MTI_BIT;
         irq_pending.m_external: interrupt_code = CSR_MEI_BIT;
@@ -201,9 +203,9 @@ cs_registers cs_registers_i
     .trap_mtval_i(next_mtval),
 
     // interrupts
-    .irq_software_i('0), // one only hard is currently present
-    .irq_timer_i(irq_timer_i),
-    .irq_external_i(irq_external_i),
+    .irq_software_i(m_software_interrupt_i), // one only hard is currently present
+    .irq_timer_i(m_timer_interrupt_i),
+    .irq_external_i(m_external_interrupt_i),
 
     // used by the performance counters
     .instr_ret_i(instr_ret_i),

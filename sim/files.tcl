@@ -90,7 +90,7 @@ ${PRJ_DIR}/bus_components/skidbuffer.v
 ${PRJ_DIR}/bus_components/wbxbar.v
 ${PRJ_DIR}/bus_components/wbupsz.v
 ${PRJ_DIR}/bus_components/wb_interconnect.sv
-${PRJ_DIR}/platform/mtimer.sv
+${PRJ_DIR}/platform/clint.sv
 ${PRJ_DIR}/platform/led_driver.sv
 ${PRJ_DIR}/platform/main_xbar.sv
 ${PRJ_DIR}/platform/sec_xbar.sv

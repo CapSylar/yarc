@@ -217,12 +217,14 @@ typedef struct packed
   mtvec_mode_t mode; // 0 - direct, 1 - vectored
 } mtvec_t;
 
+parameter unsigned CSR_SSI_BIT = 1; // Supervisor Software Interrupt Bit
 parameter unsigned CSR_MSI_BIT = 3; // Machine Software Interrupt Bit
 parameter unsigned CSR_MTI_BIT = 7; // Machine Timer Interrrupt Bit
 parameter unsigned CSR_MEI_BIT = 11;// Machine External Interrupt Bit
 
 typedef struct packed
 {
+  logic s_software;
   logic m_software;
   logic m_timer;
   logic m_external; 
