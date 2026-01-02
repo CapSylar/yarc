@@ -14,6 +14,7 @@ ${PRJ_DIR}/generic/flop/flopenrc.sv
 ${PRJ_DIR}/generic/flop/flopenrc_type.sv
 ${PRJ_DIR}/generic/flop/flopr.sv
 ${PRJ_DIR}/generic/flop/flopr_type.sv
+${PRJ_DIR}/generic/flop/flopenr.sv
 ${PRJ_DIR}/generic/mux.sv
 
 // peripherals

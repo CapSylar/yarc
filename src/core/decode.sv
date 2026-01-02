@@ -60,7 +60,8 @@ import csr_pkg::*;
     output logic [4:0] rs1_addr_o,
     output logic [4:0] rs2_addr_o,
 
-    output exc_t sys_instrE_o
+    output exc_t sys_instrE_o,
+    output fence_t fenceE_o
 );
 
 // extract the common fields from the instruction format
@@ -125,6 +126,7 @@ mem_oper_t mem_operD; // memory operation if any
 atomic_op_e atomic_opD;
 logic is_muldiv_instrD;
 exc_t sys_instrD;
+fence_t fenceD;
 logic csr_re;
 logic csr_we;
 
@@ -147,6 +149,7 @@ begin : main_decode
     };
 
     sys_instrD = NO_SYS;
+    fenceD = NO_FENCE;
     csr_re = '0;
     csr_we = '0;
 
@@ -246,7 +249,14 @@ begin : main_decode
 
             FENCE:
             begin
-
+                case (func3)
+                    3'b000:
+                        fenceD = FENCE_D;
+                    3'b001:
+                        fenceD = FENCE_I;
+                    default:
+                        illegal_instrD_o = 1'b1;
+                endcase
             end
 
             SYSTEM:
@@ -388,6 +398,7 @@ begin : id_ex_pip
         rs2_addr_o <= 0;
 
         sys_instrE_o <= NO_SYS;
+        fenceE_o <= NO_FENCE;
     end
     else if (!stall_i)
     begin
@@ -408,6 +419,7 @@ begin : id_ex_pip
         rs2_addr_o <= rs2;
 
         sys_instrE_o <= sys_instrD;
+        fenceE_o <= fenceD;
     end
 end
 

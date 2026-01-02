@@ -1,5 +1,6 @@
 .vscode/
 .dvt/
+dump.vcd
 dvt_build.log
 sim/qrun.log
 sim/logs

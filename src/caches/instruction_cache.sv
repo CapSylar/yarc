@@ -12,6 +12,9 @@ module instruction_cache
     input clk_i,
     input rstn_i,
 
+    input flush_req_i,
+    output flush_ack_o,
+
     // cpu <-> I$
     wishbone_if.SLAVE cpu_if,
 
@@ -38,6 +41,34 @@ localparam unsigned LINE_W = (2**OFFSET_W) * DATA_W;
 
 logic is_cpu_req_d, is_cpu_req_q;
 
+// -------------------- Skid Buffer --------------------
+
+// Pipe the wishbone cpu port through a skid buffer
+typedef struct packed {
+    logic [$bits(cpu_if.addr)-1:0] addr;
+    logic [$bits(cpu_if.sel)-1:0] sel;
+} wb_req_t;
+
+wb_req_t cpu_if_req, cpu_if_req_skid;
+assign cpu_if_req = '{addr: cpu_if.addr, sel: cpu_if.sel};
+logic skid_valid, cache_ready, skid_ready;
+
+skid_buffer
+#(.T(wb_req_t))
+skid_buffer_i
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+
+    .valid_i(cpu_if.stb & cpu_if.cyc),
+    .data_i(cpu_if_req),
+    .ready_o(skid_ready),
+
+    .valid_o(skid_valid),
+    .data_o(cpu_if_req_skid),
+    .ready_i(cache_ready)
+);
+
 // Memory Instantiations
 // ***********************************************************
 logic [TAG_W-1:0] tag_addr_d, tag_addr_q;
@@ -49,7 +80,7 @@ always_comb begin
     cpu_addr_d = cpu_addr_q;
 
     if (is_cpu_req_d) begin // save the address when a request happens
-        cpu_addr_d = cpu_if.addr;
+        cpu_addr_d = cpu_if_req_skid.addr;
     end
 end
 
@@ -63,11 +94,14 @@ logic valid_bits_wdata; // only one is written at a time
 logic [INDEX_W-1:0] valid_bits_raddr;
 logic [INDEX_W-1:0] valid_bits_waddr;
 
+logic flush_req;
+logic flush_cache;
+
 // valid_bits_e read and write
 generate
     for (genvar i = 0; i < NUM_WAYS; ++i) begin
         always_ff@(posedge clk_i) begin
-            if (!rstn_i) begin
+            if (!rstn_i | flush_cache) begin
                 valid_bits[i] <= '{default: '0};
             end else begin
                 if (valid_bits_re) begin
@@ -136,7 +170,7 @@ logic replace_way_idx; // index pointing to the way that will get replaced
 logic [LINE_W-1:0] mem_if_rdata_q;
 
 // wb sigs
-assign is_cpu_req_d = cpu_if.cyc & cpu_if.stb & !cpu_if.stall;
+assign is_cpu_req_d = skid_valid & cache_ready;
 
 logic read_stores; // this signals that the tag and data stores are to be read
 assign read_stores = is_cpu_req_d;
@@ -160,10 +194,11 @@ always_ff @(posedge clk_i)
 always_comb begin
     next = state;
 
-    cpu_if_stall = '0;
+    cache_ready = 1'b0;
     memory_send_req = '0;
     update_age = '0;
     restart = '0;
+    flush_cache = '0;
 
     valid_bits_we = '{default: '0};
     tag_mem_we = '{default: '0};
@@ -176,16 +211,20 @@ always_comb begin
         changes to REFILL
         */
         RUNNING: begin
+            cache_ready = 1'b1;
+
             if (miss) begin
-                cpu_if_stall = 1'b1; // can't accept anymore requests
+                cache_ready = 1'b0; // can't accept any requests
                 memory_send_req = 1'b1;
                 next = WAIT_MEMORY;
+            end else if (flush_req) begin
+                cache_ready = 1'b0; // can't accept any requests
+                flush_cache = 1'b1;
             end
         end
 
         // request the missing cache line from the backing storage
         WAIT_MEMORY: begin
-            cpu_if_stall = 1'b1; // can't accept anymore requests
             if (memory_resp_valid) begin
                 next = REFILL;
             end
@@ -194,8 +233,6 @@ always_comb begin
         // the memory has given us a response, we need to place the 
         // loaded line in the storage
         REFILL: begin
-            cpu_if_stall = 1'b1; // can't accept anymore requests
-
             // write the tag, data and valid bits in the way that will be replaced
             tag_mem_we[replace_way_idx] = 1'b1;
             tag_mem_waddr = index_addr_q;
@@ -314,17 +351,15 @@ end
 always_ff @(posedge clk_i) begin
     if (!rstn_i) begin
         cpu_addr_q <= '0;
-
         is_cpu_req_q <= '0;
     end else begin
         cpu_addr_q <= cpu_addr_d;
-
         is_cpu_req_q <= is_cpu_req_d;
     end
 end
 
 always_ff @(posedge clk_i) begin
-    if (!rstn_i) begin
+    if (!rstn_i | flush_cache) begin
         set_age <= '{default: '0};
     end else if (update_age) begin
         set_age[index_addr_q] = ~replace_way_idx; // the new points now points to the other way
@@ -338,7 +373,7 @@ assign replace_way_idx = set_age[index_addr_q];
 assign cpu_if.rdata = cpu_if_rdata;
 assign cpu_if.rty = '0;
 assign cpu_if.ack = cpu_if_ack;
-assign cpu_if.stall = cpu_if_stall;
+assign cpu_if.stall = ~skid_ready;
 assign cpu_if.err = '0;
 
 // assign memory wishbone outputs
@@ -348,5 +383,13 @@ assign mem_if.we = '0;
 assign mem_if.addr = mem_if_addr;
 assign mem_if.sel = mem_if_sel;
 assign mem_if.wdata = '0;
+
+logic flush_ack_q;
+assign flush_req = flush_req_i & ~flush_ack_q;
+wire flush_ack = flush_req & flush_cache;
+
+flopr #(1) flush_ack_pipe (clk_i, rstn_i, flush_ack, flush_ack_q);
+
+assign flush_ack_o = flush_ack_q;
 
 endmodule: instruction_cache

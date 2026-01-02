@@ -38,6 +38,7 @@ import csr_pkg::*;
     input mem_stall_needed_i,
     input wire trapM_i,
     input wire mretM_i,
+    input fence_t fenceM_i,
 
     output logic [1:0] forward_rs1_o,
     output logic [1:0] forward_rs2_o,
@@ -46,7 +47,6 @@ import csr_pkg::*;
     output logic [31:0] forward_ex_mem_data_o,
     // forward from MEM/WB stage to EX stage
     output logic [31:0] forward_mem_wb_data_o,
-
 
     // to fetch stage, to steer the pc
     output logic new_pc_en_o,
@@ -69,7 +69,11 @@ import csr_pkg::*;
 
     // flush/stall to MEM2/WB
     output logic stallW_o,
-    output logic flushW_o
+    output logic flushW_o,
+
+    // control lines to/from the caches
+    output logic flush_icache_req_o,
+    input wire flush_icache_ack_i
 );
 
 // forwarding to the EX stage happens when we are writing to a register that is sourced
@@ -144,7 +148,9 @@ wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd | 
 
 assign exc_pc_o = pcM_i;
 
-assign new_pc_en_o = trapM_i | mretM_i | csr_writeM_i | branch_takenE_i;
+wire fenceiM = (fenceM_i == FENCE_I);
+wire flush_restart = csr_writeM_i | fenceiM;
+assign new_pc_en_o = trapM_i | mretM_i | flush_restart | branch_takenE_i;
 
 always_comb
 begin: if_steering
@@ -154,26 +160,31 @@ begin: if_steering
         pc_sel_o = PC_TRAP;
     end else if (mretM_i) begin
         pc_sel_o = PC_MEPC;
-    end else if (csr_writeM_i) begin
+    end else if (flush_restart) begin
         // any CSR write causes a pipeline flush
         pc_sel_o = PC_CSRW;
     end
 end
 
+wire cachei_stall = flush_icache_req_o & ~flush_icache_ack_i;
+wire stallsM = mem_stall_needed_i | cachei_stall;
+
 // if stage N needs to stall, then so does stage N-1 and so on
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
 
-wire flush_causeD = csr_writeM_i;
-wire flush_causeE = trapM_i | mretM_i | branch_takenE_i | csr_writeM_i;
-wire flush_causeM = trapM_i | mretM_i | csr_writeM_i;
+wire flush_causeD = flush_restart;
+wire flush_causeE = trapM_i | mretM_i | branch_takenE_i | flush_restart;
+wire flush_causeM = trapM_i | mretM_i | flush_restart;
 wire flush_causeW = trapM_i;
 
 wire stall_causeD = load_use_hzrd & ~flush_causeD;
 wire stall_causeE = mdu_busyE_i & ~flush_causeE;
-wire stall_causeM = mem_stall_needed_i & ~flush_causeM;
+wire stall_causeM = stallsM & ~flush_causeM;
+
+// stalls that originate from the M stage
 
 // this is done to preserve forwarding paths, stalling W when M is stalled incurrs no penalty
-wire stall_causeW = mem_stall_needed_i & ~flush_causeW;
+wire stall_causeW = stallsM & ~flush_causeW;
 
 // remember, if N is stalled, so is N-1
 assign stallD_o = stall_causeD | stallE_o; 
@@ -194,5 +205,7 @@ assign flushD_o = flush_causeD;
 assign flushE_o = flush_causeE | first_unstalledE;
 assign flushM_o = flush_causeM | first_unstalledM;
 assign flushW_o = flush_causeW | first_unstalledW;
+
+assign flush_icache_req_o = fenceiM;
 
 endmodule: controller

@@ -23,7 +23,7 @@ import csr_pkg::*;
     input stall_i,
 
     /* the fetch unit flushes its state and refetches everything again */
-    input flush_cache_i,
+    input flush_i,
 
     /* new_pc_en_i is asserted on a branch/jump */
     input new_pc_en_i,
@@ -177,7 +177,7 @@ begin
 end
 
 assign ff_wr = wb_if.ack & (acks_to_ignore_q == '0);
-assign ff_clear = new_pc_en_i | flush_cache_i;
+assign ff_clear = new_pc_en_i | flush_i;
 
 always_comb
 begin

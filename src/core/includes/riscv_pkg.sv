@@ -137,6 +137,13 @@ typedef enum logic [4:0]
 
 typedef enum logic [1:0]
 {
+    NO_FENCE,
+    FENCE_D,
+    FENCE_I
+} fence_t;
+
+typedef enum logic [1:0]
+{
     PC_JUMP,
     PC_MEPC,
     PC_TRAP,

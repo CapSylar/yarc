@@ -65,8 +65,10 @@ logic [31:0] mimpid_q;
 // CS Registers
 // MISA: Machine ISA Register
 localparam bit [31:0] MISA_VALUE = 
-    (1 << 8) | // I - RV32I
-    (1 << 30); // M-XLEN = 1 => 32-bit
+    (1 << 0) |  // A
+    (1 << 8) |  // I
+    (1 << 12) | // M
+    (1 << 30);  // M-XLEN = 1 => 32-bit
 
 csr #(.Width(32), .ResetValue(MISA_VALUE)) csr_misa
 (

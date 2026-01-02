@@ -20,6 +20,9 @@ import riscv_pkg::*;
     input var exc_t sys_instrE_i,
     output logic [31:0] instrM_o,
     output exc_t sys_instrM_o,
+
+    input var fence_t fenceE_i,
+    output fence_t fenceM_o,
     
     input wire mem_oper_t mem_opD_i,
     input wire atomic_op_e atomic_opD_i,
@@ -88,6 +91,7 @@ result_src_e result_srcM;
 flopenrc_type #(result_src_e, RESULT_ALU) result_srcM_pipe (clk_i, rstn_i, flushM_i, !stallM_i, result_srcE_i, result_srcM);
 flopenrc_type #(mem_oper_t, '0) mem_opM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, mem_opE_o, mem_opM_o);
 flopenrc_type #(atomic_op_e, NO_ATOMIC) atomic_opM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, atomic_opE_o, atomic_opM_o);
+flopenrc_type #(fence_t, NO_FENCE) fence_M_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, fenceE_i, fenceM_o);
 
 // write back pipeline
 flopenrc_type #(result_src_e, RESULT_ALU) result_srcW_pipe (clk_i, rstn_i, flushW_i, !stallW_i, result_srcM, result_srcW_o);

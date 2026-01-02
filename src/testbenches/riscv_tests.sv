@@ -56,7 +56,10 @@ core_top core_i
 
     .m_timer_interrupt_i('0),
     .m_software_interrupt_i('0),
-    .m_external_interrupt_i('0)
+    .m_external_interrupt_i('0),
+
+    .flush_icache_req_o(),
+    .flush_icache_ack_i(1'b1)
 );
 
 `define TRAP_LINE core_i.sys_instrM;

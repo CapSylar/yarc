@@ -88,10 +88,10 @@ skid_buffer
 skid_buffer_i
 (
     .clk_i(clk_i),
-    .rstn_i(rstn_i | cpu_if.cyc), // FIXME: should we really reset when cyc is 0 ?
+    .rstn_i(rstn_i),
 
-    .valid_i(cpu_if.stb),
-    .data_i('{we: cpu_if.we, addr: cpu_if.addr, sel: cpu_if.sel, wdata: cpu_if.wdata}),
+    .valid_i(cpu_if.stb & cpu_if.cyc),
+    .data_i(cpu_if_req),
     .ready_o(skid_ready),
 
     .valid_o(skid_valid),

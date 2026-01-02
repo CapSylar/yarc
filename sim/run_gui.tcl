@@ -13,7 +13,7 @@ add wave -color Gold ${CORE}/wb_prefetch_i/valid_o;
 add wave -color Gold ${CORE}/wb_prefetch_i/instr_o;
 add wave -color Gold ${CORE}/wb_prefetch_i/pc_o;
 add wave ${CORE}/wb_prefetch_i/stall_i;
-add wave ${CORE}/wb_prefetch_i/flush_cache_i;
+add wave ${CORE}/wb_prefetch_i/flush_i;
 add wave ${CORE}/wb_prefetch_i/new_pc_en_i;
 add wave ${CORE}/wb_prefetch_i/pc_sel_i;
 add wave ${CORE}/wb_prefetch_i/branch_target_i;
@@ -307,10 +307,13 @@ add wave -group {Simple WB Memory} ${TOP}/replace_with_wb_model/wb_sim_memory_i/
 # add wave -group {DDR3 External Interface} ${ddr3_top}/ddr3_top/o_wb_data;
 
 add wave ${PLATFORM}/*;
-add wave ${PLATFORM}/uart_top_i/*;
-add wave ${PLATFORM}/uart_top_i/regs/*;
-add wave ${PLATFORM}/uart_top_i/regs/transmitter/*;
-add wave ${PLATFORM}/uart_top_i/wb_interface/*;
+
+add wave ${CORE}/controller_i/*;
+
+add wave -divider {PRIVILEGED}
+add wave ${CORE}/privileged_i/*;
+
+add wave ${CORE}/*;
 
 # ---------------------------------------------------------
 # disable creation of the transcript file

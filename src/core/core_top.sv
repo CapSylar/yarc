@@ -25,7 +25,10 @@ import csr_pkg::*;
     // interrupts
     input m_timer_interrupt_i,
     input m_software_interrupt_i,
-    input m_external_interrupt_i
+    input m_external_interrupt_i,
+
+    output flush_icache_req_o,
+    input flush_icache_ack_i
 );
 
 // Signal definitions
@@ -70,6 +73,8 @@ logic [4:0] id_ex_rs1_addr;
 logic [4:0] id_ex_rs2_addr;
 exc_t sys_instrE;
 exc_t sys_instrM;
+fence_t fenceE;
+fence_t fenceM;
 logic load_misaligned_trapM;
 logic store_misaligned_trapM;
 
@@ -152,7 +157,7 @@ wb_prefetch wb_prefetch_i
     .pc_o(pcD),
 
     .stall_i(stallD),
-    .flush_cache_i(flushD),
+    .flush_i(flushD),
 
     // target addresses
     .branch_target_i(branch_targetE),
@@ -233,6 +238,9 @@ datapath datapath_i (
     .instrE_o(instrE),
     .instrM_o(instrM),
     .sys_instrM_o(sys_instrM),
+
+    .fenceE_i(fenceE),
+    .fenceM_o(fenceM),
 
     .csr_readM_o(csr_readM),
     .csr_writeM_o(csr_writeM),
@@ -353,7 +361,8 @@ decode decode_i
     .rs1_addr_o(id_ex_rs1_addr),
     .rs2_addr_o(id_ex_rs2_addr),
 
-    .sys_instrE_o(sys_instrE)
+    .sys_instrE_o(sys_instrE),
+    .fenceE_o(fenceE)
 );
 
 // Execute Stage
@@ -544,6 +553,7 @@ controller controller_i
     .mem_stall_needed_i(mem_stall_needed),
     .trapM_i(trapM),
     .mretM_i(mretM),
+    .fenceM_i(fenceM),
 
     // forwarding control signals
     .forward_rs1_o(forward_rs1),
@@ -569,7 +579,10 @@ controller controller_i
     .flushM_o(flushM),
 
     .stallW_o(stallW),
-    .flushW_o(flushW)
-);
+    .flushW_o(flushW),
 
+    .flush_icache_req_o(flush_icache_req_o),
+    .flush_icache_ack_i(flush_icache_ack_i)
+);
+    
 endmodule : core_top

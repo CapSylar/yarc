@@ -62,12 +62,17 @@ fetch_intercon fetch_intercon_i
 wishbone_if #(.ADDRESS_WIDTH(SEC_WB_AW), .DATA_WIDTH(SEC_WB_DW)) mem_instr_cache_wb_if();
 wishbone_if #(.ADDRESS_WIDTH(SEC_WB_AW), .DATA_WIDTH(SEC_WB_DW)) mem_data_cache_wb_if();
 
+logic flush_icache_req, flush_icache_ack;
+
 // Instruction Cache for DDR3 Memory
 instruction_cache #(.NUM_SETS_LOG2(INSTR_CACHE_NUM_SETS_LOG2)) // 512 sets => 1024 cache lines
 instruction_cache_i
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
+
+    .flush_req_i(flush_icache_req),
+    .flush_ack_o(flush_icache_ack),
 
     .cpu_if(icache_wb_if),
 
@@ -249,7 +254,10 @@ core_top core_i
     // interrupts
     .m_timer_interrupt_i(m_timer_interrupt),
     .m_software_interrupt_i(m_software_interrupt),
-    .m_external_interrupt_i(uart_int)
+    .m_external_interrupt_i(uart_int),
+
+    .flush_icache_req_o(flush_icache_req),
+    .flush_icache_ack_i(flush_icache_ack)
 );
 
 endmodule: yarc_platform

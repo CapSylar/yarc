@@ -12,7 +12,7 @@ add wave -color Gold ${CORE}/wb_prefetch_i/valid_o;
 add wave -color Gold ${CORE}/wb_prefetch_i/instr_o;
 add wave -color Gold ${CORE}/wb_prefetch_i/pc_o;
 add wave ${CORE}/wb_prefetch_i/stall_i;
-add wave ${CORE}/wb_prefetch_i/flush_cache_i;
+add wave ${CORE}/wb_prefetch_i/flush_i;
 add wave ${CORE}/wb_prefetch_i/new_pc_en_i;
 add wave ${CORE}/wb_prefetch_i/pc_sel_i;
 add wave ${CORE}/wb_prefetch_i/branch_target_i;
