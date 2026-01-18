@@ -44,11 +44,11 @@ begin: read_logic
     unique case (addr)
         MSIP_OFFSET: rdata_d = 32'(msip);
 
-        MTIMECMP_OFFSET: rdata_d = mtime_q[31:0];
-        MTIMECMPH_OFFSET: rdata_d = mtime_q[63:32];
+        MTIMECMP_OFFSET: rdata_d = mtimecmp_q[31:0];
+        MTIMECMPH_OFFSET: rdata_d = mtimecmp_q[63:32];
 
-        MTIME_OFFSET: rdata_d = mtimecmp_q[31:0];
-        MTIMEH_OFFSET: rdata_d = mtimecmp_q[63:32];
+        MTIME_OFFSET: rdata_d = mtime_q[31:0];
+        MTIMEH_OFFSET: rdata_d = mtime_q[63:32];
         default:;
     endcase
 end
