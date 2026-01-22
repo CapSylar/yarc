@@ -15,58 +15,30 @@ import riscv_pkg::*;
     output logic branch_takenE_o
 );
 
-logic is_cmp_signed;
-
-// prepare both operands 1 and 2
-logic [32:0] adder_in_1, adder_in_2;
-logic [32:0] adder_result_ext;
-logic [31:0] adder_result;
-
-assign adder_in_1 = {rs1ValueE_i,1'b1};
-assign adder_in_2 = ~{rs2ValueE_i,1'b0};
-
-assign adder_result_ext = $unsigned(adder_in_1) + $unsigned(adder_in_2);
-assign adder_result = adder_result_ext[32:1];
-
 // produce the comparison values
-logic is_equal, is_greater_equal;
+logic is_equal, is_less_than, is_less_than_unsigned;
 
-assign is_equal = (adder_result == '0);
-
-// calculate greater or equal
-always_comb
-begin
-    // if both operands have the same sign (++ or --), then if a - b is positive then a > b
-    if ((rs1ValueE_i[31] ^ rs2ValueE_i[31]) == '0)
-        is_greater_equal = (adder_result[31] == '0);
-
-        // the operands' signs are not equal:
-        // 1- if the cmp is signed, the one with the + sign is greater
-        // 2- if the cmp is not signed, the operand with the MSB is greater
-    else
-        is_greater_equal = (rs1ValueE_i[31] ^ is_cmp_signed);
-end
+assign is_equal = (rs1ValueE_i == rs2ValueE_i);
+assign is_less_than = $signed(rs1ValueE_i) < $signed(rs2ValueE_i);
+assign is_less_than_unsigned = rs1ValueE_i < rs2ValueE_i;
 
 logic is_cond_branch_taken;
 
 always_comb begin
-    is_cmp_signed = 1'b1;
     is_cond_branch_taken = 1'b0;
 
     unique case (opcode_branch_t'(func3E_i))
         BEQ: is_cond_branch_taken = is_equal;
         BNE: is_cond_branch_taken = ~is_equal;
-        BLT: is_cond_branch_taken = ~is_greater_equal;
-        BGE: is_cond_branch_taken = is_greater_equal;
+        BLT: is_cond_branch_taken = is_less_than;
+        BGE: is_cond_branch_taken = ~is_less_than;
 
         BLTU: begin
-            is_cmp_signed = 1'b0;
-            is_cond_branch_taken = ~is_greater_equal;
+            is_cond_branch_taken = is_less_than_unsigned;
         end 
         
         BGEU: begin
-            is_cmp_signed = 1'b0;
-            is_cond_branch_taken = is_greater_equal;
+            is_cond_branch_taken = ~is_less_than_unsigned;
         end
         default:;
     endcase
