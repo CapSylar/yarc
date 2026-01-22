@@ -45,7 +45,7 @@ localparam logic [MAIN_WB_AW-1:0] LED_DRIVER_MASK =       32'hFFFF_FFFC >> UNUSE
 
 // VIDEO CORE
 // 4 bytes * 8 = 32 bytes
-localparam logic [MAIN_WB_AW-1:0] VIDEO_BASE_ADDR =        32'hA100_0030 >> UNUSED_BITS;
+localparam logic [MAIN_WB_AW-1:0] VIDEO_BASE_ADDR =        32'hA100_0040 >> UNUSED_BITS;
 localparam logic [MAIN_WB_AW-1:0] VIDEO_MASK =             32'hFFFF_FFE0 >> UNUSED_BITS;
 
 // **************************************************************************************

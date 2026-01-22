@@ -20,6 +20,8 @@ import video_pkg::*;
 localparam [9:0] X_COUNTER_INIT_VALUE = '0;
 localparam [9:0] Y_COUNTER_INIT_VALUE = 'd481;
 
+logic vblank;
+
 // module configuration registers
 video_config_t video_config;
 video_addr_t video_addr;
@@ -30,6 +32,8 @@ video_core_ctrl video_core_ctrl_i
 	.rstn_i(rstn_i),
 
 	.config_if(config_if),
+
+	.is_vblank_i(vblank),
 
 	.video_config_o(video_config),
 	.video_addr_o(video_addr)
@@ -329,6 +333,7 @@ end
 assign hsync = (x_counter >= 'd656) & (x_counter < 'd757);
 assign vsync = (y_counter >= 'd490) & (y_counter < 'd492);
 assign draw_area = (x_counter < 'd640) & (y_counter < 'd480);
+assign vblank = (y_counter > 'd480);
 
 // hdmi phy
 hdmi_phy hdmi_phy_i

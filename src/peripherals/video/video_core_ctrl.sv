@@ -8,6 +8,9 @@ import video_pkg::*;
 
     wishbone_if.SLAVE config_if,
 
+    // status lines
+    input wire is_vblank_i,
+
     // outputs config registers
     output video_config_t video_config_o,
     output video_addr_t video_addr_o
@@ -21,6 +24,7 @@ logic ack_d, ack_q;
 
 video_config_t video_config_q;
 video_addr_t video_addr_q;
+video_status_t video_status;
 
 logic video_config_we, video_addr_we;
 
@@ -30,6 +34,7 @@ always_comb begin :wb_read
     case (addr)
         VIDEO_CONFIG: wb_data_d = 32'(video_config_q);
         VIDEO_ADDR: wb_data_d = 32'(video_addr_q);
+        VIDEO_STATUS: wb_data_d = 32'(video_status);
     endcase
 end
 
@@ -82,6 +87,8 @@ reg_bw #(.WIDTH(VIDEO_ADDR_SZ) , .RESET_VALUE('0)) video_addr_reg
     .wsel_i(config_if.sel[$bits(video_addr_reg.wsel_i)-1:0]),
     .wdata_i(config_if.wdata[VIDEO_ADDR_SZ-1:0])
 );
+
+assign video_status = '{is_vblank: is_vblank_i};
 
 // assign wishbone signals
 assign config_if.rdata = wb_data_q;
