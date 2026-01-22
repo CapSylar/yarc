@@ -118,7 +118,7 @@ end
 // fifo has reached max elements minus one
 wire ff_one_till_full = (req_pending_q + ff_fill_count == (max_ff_count-1));
 
-enum {BOOT, REQUESTING, BUFFER_FULL} state, next;
+enum {BOOT, HOLD_FLUSH, REQUESTING, BUFFER_FULL} state, next;
 always_ff @(posedge clk_i)
     if (!rstn_i) state <= BOOT;
     else         state <= next;
@@ -138,14 +138,28 @@ begin: wb_sm
             fetch_pc_d = BOOT_PC;
             next = REQUESTING;
         end
+
+        HOLD_FLUSH: begin
+            if (!flush_i) begin
+                next = REQUESTING;
+            end
+        end
+
         REQUESTING:
         begin
             stb = 1'b1;
 
             if (new_pc_en_i)
                 fetch_pc_d = new_pc;
+            else if (flush_i) begin
+                fetch_pc_d = arch_pc_q;
+            end
             else if (!wb_if.stall) // keep the same requesting pc in this case
                 fetch_pc_d = fetch_pc_d + 4;
+
+            if (flush_i) begin
+                next = HOLD_FLUSH;
+            end
 
             // only issue requests whose responses we have a place to store
             // else, we have to stop issuing requests
@@ -198,9 +212,9 @@ begin
         req_pending_d = req_pending_d + 1;
     end
 
-    if (new_pc_en_i)
+    if (new_pc_en_i | flush_i)
     begin
-        acks_to_ignore_d = req_pending_d;
+        acks_to_ignore_d = acks_to_ignore_q + req_pending_d;
         req_pending_d = '0;
     end
 end

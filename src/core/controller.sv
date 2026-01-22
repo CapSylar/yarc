@@ -148,8 +148,11 @@ wire load_use_hzrd = mem_load_use_hzrd | csr_load_use_hzrd | mul_div_use_hzrd | 
 
 assign exc_pc_o = pcM_i;
 
+wire cachei_stall = flush_icache_req_o & ~flush_icache_ack_i;
+wire stallsM = mem_stall_needed_i | cachei_stall;
+
 wire fenceiM = (fenceM_i == FENCE_I);
-wire flush_restart = csr_writeM_i | fenceiM;
+wire flush_restart = csr_writeM_i | (fenceiM & ~cachei_stall); 
 assign new_pc_en_o = trapM_i | mretM_i | flush_restart | branch_takenE_i;
 
 always_comb
@@ -165,9 +168,6 @@ begin: if_steering
         pc_sel_o = PC_CSRW;
     end
 end
-
-wire cachei_stall = flush_icache_req_o & ~flush_icache_ack_i;
-wire stallsM = mem_stall_needed_i | cachei_stall;
 
 // if stage N needs to stall, then so does stage N-1 and so on
 // if a stall is caused by MEM1 or MEM2 we have to stall WB as well, to preserve any forwarding that is happending to EX from WB or MEM2 or MEM1
