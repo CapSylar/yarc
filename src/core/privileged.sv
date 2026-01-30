@@ -35,7 +35,7 @@ import csr_pkg::*;
     output irqs_t irq_pending_o,
 
     // trap inputs
-    input var exc_t sys_instrM_i,
+    input var sys_instr_t sys_instrM_i,
     input wire load_misaligned_trapM_i,
     input wire store_misaligned_trapM_i,
     input wire illegal_instrD_i,
@@ -102,6 +102,8 @@ wire take_irq = is_interrupt_en & instr_validM_i & |irq_pending;
  */
 
 wire is_mretM = (sys_instrM_i == MRET);
+wire is_ebreakM = (sys_instrM_i == EBREAK);
+wire is_ecallM = (sys_instrM_i == ECALL);
 
 wire trapM = (sys_instrM_i != NO_SYS & ~is_mretM)
          | load_misaligned_trapM_i
@@ -149,6 +151,10 @@ always_comb begin
             trap_mcauseM.trap_code = 4'd6; // store/AMO address misaligned
         end else if (illegal_instrM | illegal_csr_accessM) begin
             trap_mcauseM.trap_code = 4'd2; // illegal instruction trap
+        end else if (is_ebreakM) begin
+            trap_mcauseM.trap_code = 4'd3; // breakpoint
+        end else if (is_ecallM) begin
+            trap_mcauseM.trap_code = (current_plvl_o == PRIV_LVL_M) ? 4'd11 : 4'd8;
         end
     end
 end
@@ -167,6 +173,10 @@ always_comb begin
         next_mtval = lsu_addrM_i; // faulting address
     end
 end
+
+/* 
+ * Debug Controller
+ */
 
 // CS Register file
 cs_registers cs_registers_i

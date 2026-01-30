@@ -65,14 +65,14 @@ core_top core_i
 `define TRAP_LINE core_i.sys_instrM;
 `define REG_FILE core_i.reg_file_i.regf
 
-exc_t trap;
+sys_instr_t trap;
 assign trap = `TRAP_LINE;
 
 logic stop_sim;
 
 always_ff @(posedge clk, negedge rstn)
     if (!rstn) stop_sim <= '0;
-    else stop_sim <= (trap == ECALL_MMODE || trap == ECALL_UMODE);
+    else stop_sim <= (trap == ECALL);
 
 
 // ******************************************************************************************

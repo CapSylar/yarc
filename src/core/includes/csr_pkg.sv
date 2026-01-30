@@ -230,4 +230,39 @@ typedef struct packed
   logic m_external; 
 } irqs_t;
 
+typedef struct packed {
+
+  logic [31:28] xdebugver;
+  logic [27:16] _reserved2;
+  logic ebreakm;
+  logic _reserved1;
+  logic ebreaks;
+  logic ebreaku;
+  logic stepie;
+  logic stopcount;
+  logic stoptime;
+  logic [8:6] cause;
+  logic _reserved0;
+  logic mprven;
+  logic nmip;
+  logic step;
+  logic [1:0] prv;
+} dcsr_t;
+
+localparam unsigned CSR_DCSR_PRV_BIT_LOW        = 0;
+localparam unsigned CSR_DCSR_PRV_BIT_HIGH       = 1;
+localparam unsigned CSR_DCSR_STEP_BIT           = 2;
+localparam unsigned CSR_DCSR_NMIP_BIT           = 3;
+localparam unsigned CSR_DCSR_MPRVEN_BIT         = 4;
+localparam unsigned CSR_DCSR_CAUSE_BIT_LOW      = 6;
+localparam unsigned CSR_DCSR_CAUSE_BIT_HIGH     = 8;
+localparam unsigned CSR_DCSR_STOPTIME_BIT       = 9;
+localparam unsigned CSR_DCSR_STOPCOUNT_BIT      = 10;
+localparam unsigned CSR_DCSR_STEPIE_BIT         = 11;
+localparam unsigned CSR_DCSR_EBREAKU_BIT        = 12;
+localparam unsigned CSR_DCSR_EBREAKS_BIT        = 13;
+localparam unsigned CSR_DCSR_EBREAKM_BIT        = 15;
+localparam unsigned CSR_DCSR_XDEBUGVER_BIT_LOW  = 28;
+localparam unsigned CSR_DCSR_XDEBUGVER_BIT_HIGH = 31;
+
 endpackage: csr_pkg

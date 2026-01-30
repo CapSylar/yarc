@@ -17,9 +17,9 @@ import riscv_pkg::*;
     input wire [31:0] instrD_i,
 
     output logic [31:0] instrE_o,
-    input var exc_t sys_instrE_i,
+    input var sys_instr_t sys_instrE_i,
     output logic [31:0] instrM_o,
-    output exc_t sys_instrM_o,
+    output sys_instr_t sys_instrM_o,
 
     input var fence_t fenceE_i,
     output fence_t fenceM_o,
@@ -79,7 +79,7 @@ flopenrc_type #(mem_oper_t, '0) mem_opE_pipe (clk_i, rstn_i, flushE_i, ~stallE_i
 flopenrc_type #(atomic_op_e, NO_ATOMIC) atomic_opE_pipe (clk_i, rstn_i, flushE_i, ~stallE_i, atomic_opD_i, atomic_opE_o);
 
 // memory stage pipeline
-flopenrc_type #(exc_t, NO_SYS) sys_instrM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, sys_instrE_i, sys_instrM_o); // FIXME: wrong flush* and stall* signals ? 
+flopenrc_type #(sys_instr_t, NO_SYS) sys_instrM_pipe (clk_i, rstn_i, flushM_i, ~stallM_i, sys_instrE_i, sys_instrM_o); // FIXME: wrong flush* and stall* signals ? 
 flopenrc_type #(logic [31:0], NOP) instructionM_pipe (clk_i, rstn_i, flushM_i, !stallM_i, instrE_o, instrM_o);
 flopenrc #(1) csr_writeE_pipe (clk_i, rstn_i, flushM_i, !stallM_i, csr_writeE_i, csr_writeM_o);
 flopenrc #(1) csr_readM_pipe (clk_i, rstn_i, flushM_i, !stallM_i, csr_readE, csr_readM_o);

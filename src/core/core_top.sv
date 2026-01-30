@@ -71,8 +71,8 @@ result_src_e result_srcE, result_srcW;
 logic [4:0] rdD;
 logic [4:0] id_ex_rs1_addr;
 logic [4:0] id_ex_rs2_addr;
-exc_t sys_instrE;
-exc_t sys_instrM;
+sys_instr_t sys_instrE;
+sys_instr_t sys_instrM;
 fence_t fenceE;
 fence_t fenceM;
 logic load_misaligned_trapM;
@@ -308,9 +308,6 @@ decode decode_i
     .clk_i(clk_i),
     .rstn_i(rstn_i),
     .instr_valid_i(instr_validD),
-
-    // from csr unit
-    .current_plvl_i(current_plvl),
 
     // register file <-> decode module
     // read port

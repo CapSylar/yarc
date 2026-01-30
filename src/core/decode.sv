@@ -9,9 +9,6 @@ import csr_pkg::*;
     input rstn_i,
     input instr_valid_i,
 
-    // from csr unit
-    input priv_lvl_e current_plvl_i,
-
     // register file <-> decode module
     // read port
     output [4:0] regf_rs1_addr_o,
@@ -60,7 +57,7 @@ import csr_pkg::*;
     output logic [4:0] rs1_addr_o,
     output logic [4:0] rs2_addr_o,
 
-    output exc_t sys_instrE_o,
+    output sys_instr_t sys_instrE_o,
     output fence_t fenceE_o
 );
 
@@ -125,7 +122,7 @@ mem_oper_t mem_operD; // memory operation if any
 
 atomic_op_e atomic_opD;
 logic is_muldiv_instrD;
-exc_t sys_instrD;
+sys_instr_t sys_instrD;
 fence_t fenceD;
 logic csr_re;
 logic csr_we;
@@ -268,9 +265,9 @@ begin : main_decode
                     else
                     begin
                         if (instr_i[31:20] == 12'd1)
-                            sys_instrD = BRK_POINT;
+                            sys_instrD = EBREAK;
                         else
-                            sys_instrD = (current_plvl_i == PRIV_LVL_M) ? ECALL_MMODE : ECALL_UMODE;
+                            sys_instrD = ECALL;
                     end
                 end
                 else  // CSR instruction

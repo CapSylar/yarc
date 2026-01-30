@@ -291,7 +291,7 @@ csr #(.Width($bits(mcause_t)), .ResetValue('0)) csr_mcause
     .rd_data_o(mcause_q)
 );
 
-logic mtval_wen;
+logic mtval_we;
 logic [31:0] mtval_d, mtval_q;
 
 // MTVAL: Machine Trap Value Register
@@ -299,9 +299,91 @@ csr #(.Width(32), .ResetValue('0)) csr_mtval
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
-    .wr_en_i(mtval_wen),
+    .wr_en_i(mtval_we),
     .wr_data_i(mtval_d),
     .rd_data_o(mtval_q)
+);
+
+/*
+ * DCSR: Debug Control and Status Register
+ */
+
+logic dcsr_we;
+dcsr_t dcsr_wdata, dcsr_rdata;
+
+localparam dcsr_t DCSR_DEFAULT = '{
+    xdebugver: 4,
+    _reserved2: '0,
+    ebreakm: '0,
+    _reserved1: '0,
+    ebreaks: '0,
+    ebreaku: '0,
+    stepie: '0,
+    stopcount: '0,
+    stoptime: '0,
+    cause: '0,
+    _reserved0: '0,
+    mprven: '0,
+    nmip: '0,
+    step: '0,
+    prv: '0
+};
+
+csr #(.Width($bits(dcsr_t)), .ResetValue(DCSR_DEFAULT)) csr_dcsr
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+    .wr_en_i(dcsr_we),
+    .wr_data_i(dcsr_wdata),
+    .rd_data_o(dcsr_rdata)
+);
+
+/*
+ * DPC: Debug PC
+*/
+
+logic dpc_we;
+logic [31:0] dpc_wdata, dpc_rdata;
+
+csr #(.Width(32), .ResetValue('0)) csr_dpc
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+    .wr_en_i(dpc_we),
+    .wr_data_i(dpc_wdata),
+    .rd_data_o(dpc_rdata)
+);
+
+/*
+ * Debug Scratch Register 0
+*/
+
+logic dscratch0_we;
+logic [31:0] dscratch0_rdata;
+
+csr #(.Width(32), .ResetValue('0)) csr_dscratch0
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+    .wr_en_i(dscratch0_we),
+    .wr_data_i(csr_wdata_i),
+    .rd_data_o(dscratch0_rdata)
+);
+
+/*
+ * Debug Scratch Register 1
+*/
+
+logic dscratch1_we;
+logic [31:0] dscratch1_rdata;
+
+csr #(.Width(32), .ResetValue('0)) csr_dscratch1
+(
+    .clk_i(clk_i),
+    .rstn_i(rstn_i),
+    .wr_en_i(dscratch1_we),
+    .wr_data_i(csr_wdata_i),
+    .rd_data_o(dscratch1_rdata)
 );
 
 logic [31:0] csr_rdata;
@@ -367,6 +449,23 @@ always_comb begin: csr_read
             begin
                 csr_rdata = mhpmcounter[mhpmcounter_idx][63:32];
             end
+
+            CSR_DCSR: begin
+                csr_rdata = dcsr_rdata;
+            end
+
+            CSR_DPC: begin
+                csr_rdata = dpc_rdata;
+            end
+
+            CSR_DSCRATCH0: begin
+                csr_rdata = dscratch0_rdata;
+            end
+
+            CSR_DSCRATCH1: begin
+                csr_rdata = dscratch1_rdata;
+            end
+
             default: illegal_csr_read = 1'b1;
         endcase
     end
@@ -392,7 +491,7 @@ always_comb begin: csr_write
     mtvec_we = 1'b0;
     mtvec_d = mtvec_q;
 
-    mtval_wen = 1'b0;
+    mtval_we = 1'b0;
     mtval_d = mtval_q;
 
     mie_we = 1'b0;
@@ -412,6 +511,16 @@ always_comb begin: csr_write
 
     mhpmcounter_we = '0;
     mhpmcounterh_we = '0;
+
+    dcsr_we = '0;
+    dpc_we = '0;
+    dscratch0_we = '0;
+    dscratch1_we = '0;
+
+    /*
+     * no need to detect non-matching entries since is csr_we is 1
+     * then csr_re is 1 and we do the detection in the other case statement
+     */
 
     // CSR read and writes from CSRRW/S/C instructions
     if (csr_we_i)
@@ -436,7 +545,7 @@ always_comb begin: csr_write
             end
             CSR_MTVAL:
             begin
-                mtval_wen = 1'b1;
+                mtval_we = 1'b1;
                 mtval_d = csr_wdata_i;
             end
             CSR_MIE:
@@ -490,13 +599,49 @@ always_comb begin: csr_write
                 mhpmcounterh_we[mhpmcounter_idx] = 1'b1;
             end
 
-            /*
-             * no need to detect non-matching entries since is csr_we is 1
-             * then csr_re is 1 and we do the detection in the other case statement
-             */
+            CSR_DCSR: begin
+                dcsr_we = 1'b1;
+                dcsr_wdata = '{
+                    // readonly
+                    xdebugver: dcsr_rdata[CSR_DCSR_XDEBUGVER_BIT_HIGH: CSR_DCSR_XDEBUGVER_BIT_LOW],
+                    _reserved0: '0,
+                    _reserved1: '0,
+                    _reserved2: '0,
+
+                    // writeable fields
+                    ebreakm:  csr_wdata_i[CSR_DCSR_EBREAKM_BIT],
+                    ebreaks:  csr_wdata_i[CSR_DCSR_EBREAKS_BIT],
+                    ebreaku:  csr_wdata_i[CSR_DCSR_EBREAKU_BIT],
+                    stepie:   csr_wdata_i[CSR_DCSR_STEPIE_BIT],
+                    stopcount:csr_wdata_i[CSR_DCSR_STOPCOUNT_BIT],
+                    stoptime: csr_wdata_i[CSR_DCSR_STOPTIME_BIT],
+                    cause:    csr_wdata_i[CSR_DCSR_CAUSE_BIT_HIGH: CSR_DCSR_CAUSE_BIT_LOW],
+                    mprven:   csr_wdata_i[CSR_DCSR_MPRVEN_BIT],
+                    nmip:     csr_wdata_i[CSR_DCSR_NMIP_BIT],
+                    step:     csr_wdata_i[CSR_DCSR_STEP_BIT],
+                    prv:      csr_wdata_i[CSR_DCSR_PRV_BIT_HIGH: CSR_DCSR_PRV_BIT_LOW]
+                };
+            end
+
+            CSR_DPC: begin
+                dpc_we = 1'b1;
+                dpc_wdata = csr_wdata_i;
+            end
+
+            CSR_DSCRATCH0: begin
+                dscratch0_we = 1'b1;
+            end
+
+            CSR_DSCRATCH1: begin
+                dscratch1_we = 1'b1;
+            end
             default;
         endcase
     end
+
+    /*
+     * internal updates
+     */
 
     unique case (1'b1)
         is_mret_i:
@@ -533,7 +678,7 @@ always_comb begin: csr_write
             mepc_we = 1'b1;
             mepc_d = trap_mepc_i;
 
-            mtval_wen = 1'b1;
+            mtval_we = 1'b1;
             mtval_d = trap_mtval_i;
         end
         default:;
