@@ -62,7 +62,7 @@ module core_subsystem
     // debug unit slave interface
     logic                        dm_grant;
     logic                        dm_rvalid;
-    logic                        dm_req;
+    logic                        dm_req = '0;
     logic                        dm_we;
     logic [31:0]                 dm_addr;
     logic [31:0]                 dm_wdata;
@@ -75,9 +75,9 @@ module core_subsystem
     logic                        sb_we;
     logic [31:0]                 sb_wdata;
     logic [3:0]                  sb_be;
-    logic                        sb_gnt;
-    logic                        sb_rvalid;
-    logic [31:0]                 sb_rdata;
+    logic                        sb_gnt = '0;
+    logic                        sb_rvalid = '0;
+    logic [31:0]                 sb_rdata = '0;
 
     dmi_jtag dmi_jtag_i (
         .clk_i(clk_i),

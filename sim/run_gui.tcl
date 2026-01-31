@@ -2,7 +2,8 @@
 global env
 set TOP sim:$env(SIM_TOP)
 set PLATFORM ${TOP}/yarc_platform_i
-set CORE ${PLATFORM}/subsystem_i/core_i
+set SUBSYSTEM ${PLATFORM}/subsystem_i
+set CORE ${SUBSYSTEM}/core_i
 
 add wave ${CORE}/clk_i;
 add wave ${CORE}/rstn_i;
@@ -306,6 +307,9 @@ add wave -group {Simple WB Memory} ${TOP}/replace_with_wb_model/wb_sim_memory_i/
 # add wave -group {DDR3 External Interface} ${ddr3_top}/ddr3_top/o_wb_data;
 
 add wave ${PLATFORM}/*;
+add wave ${SUBSYSTEM}/*;
+add wave ${SUBSYSTEM}/dmi_jtag_i/*;
+add wave ${SUBSYSTEM}/dmi_jtag_i/i_dmi_jtag_tap/*;
 
 add wave ${CORE}/controller_i/*;
 

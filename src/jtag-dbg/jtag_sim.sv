@@ -34,6 +34,9 @@ module jtag_sim(
 
         //test TAP Controller
         dm.jtag_idcode_test();
+        dm.halt_harts();
+
+        $display("halted!");
     end
 
 endmodule

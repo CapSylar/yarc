@@ -67,6 +67,7 @@ ${PRJ_DIR}/utils/fifo_v2.sv
 ${PRJ_DIR}/utils/sync.sv
 ${PRJ_DIR}/utils/cdc_reset_ctrlr.sv
 ${PRJ_DIR}/utils/cdc_4phase.sv
+${PRJ_DIR}/utils/tc_clk.sv
 
 // testbench utils
 ${PRJ_DIR}/utils/simulation/clk_gen.sv
@@ -141,12 +142,12 @@ ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_mem.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_obi_top.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_sba.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_top.sv
-${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_bscane_tap.sv
+# ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_bscane_tap.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_cdc.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_intf.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_jtag.sv
 ${PRJ_DIR}/jtag-dbg/riscv-dbg/debug_rom/debug_rom.sv
-# ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_jtag_tap.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_jtag_tap.sv
 
 ${PRJ_DIR}/jtag-dbg/jtag_sim.sv
 

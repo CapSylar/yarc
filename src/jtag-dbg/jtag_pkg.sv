@@ -553,33 +553,18 @@ package jtag_pkg;
       endfunction
 
    task jtag_idcode_test();
-
       logic [31:0] idcode;
       this.set_current_tap(0);
       this.init(0 , 6 /*number of triggers*/ ); // init
       this.jtag_get_idcode(idcode);
       $display("[JTAG] Tap ID CORE0: %h (%t)",idcode, $realtime);
-   
-      this.set_current_tap(1);
-      this.init(0 , 6 /*number of triggers*/ ); // init
-      this.jtag_get_idcode(idcode);
-      $display("[JTAG] Tap ID CORE1: %h (%t)",idcode, $realtime);
    endtask
 
    // TODO:find a general solution for the number of taps situation
    task jtag_get_idcode(output logic [31:0] idcode);
-      if (this.num_taps == 2) begin
-         automatic JTAG_reg #(.size(JTAG_IDCODE_WIDTH), .instr({JTAG_SOC_IDCODE}), .num_taps(2)) jtag_idcode = new (this.current_tap);
-         jtag_idcode.setIR(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
-         jtag_idcode.goto_shift_state_n_shift_n_idle('0, idcode, this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi, this.jtag.tdo);
-      end
-      else begin
          automatic JTAG_reg #(.size(JTAG_IDCODE_WIDTH), .instr({JTAG_SOC_IDCODE}), .num_taps(1)) jtag_idcode = new (this.current_tap);
          jtag_idcode.setIR(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
          jtag_idcode.goto_shift_state_n_shift_n_idle('0, idcode, this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi, this.jtag.tdo);
-      end
-      
-      
    endtask
 
    task automatic jtag_reset();
@@ -1108,8 +1093,7 @@ package jtag_pkg;
          logic [DMI_SIZE-1:0] buffer;
          logic [DMI_SIZE-1:0]   buffer_riscv;
 
-         if (this.num_taps == 2) begin
-            JTAG_reg #(.size(DMI_SIZE), .instr({JTAG_SOC_DMIACCESS}), .num_taps(2)) jtag_soc_dbg = new (this.current_tap);
+            JTAG_reg #(.size(DMI_SIZE), .instr({JTAG_SOC_DMIACCESS}), .num_taps(1)) jtag_soc_dbg = new (this.current_tap);
             jtag_soc_dbg.setIR(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
 
             jtag_soc_dbg.goto_shift_state_n_shift({address_i,data_i,op_i}, buffer, this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi , this.jtag.tdo);
@@ -1129,31 +1113,6 @@ package jtag_pkg;
             data_o[40:34] = buffer_riscv[40:34];
             data_o[33:2]  = buffer_riscv[33:2];
             jtag_soc_dbg.idle(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
-         end
-         else begin
-            JTAG_reg #(.size(32), .instr({JTAG_SOC_DMIACCESS}), .num_taps(1)) jtag_soc_dbg = new (this.current_tap);
-            jtag_soc_dbg.setIR(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
-
-            jtag_soc_dbg.goto_shift_state_n_shift({address_i,data_i,op_i}, buffer, this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi , this.jtag.tdo);
-            jtag_soc_dbg.jtag_goto_UPDATE_DR_FROM_SHIFT_DR(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
-            jtag_soc_dbg.jtag_goto_CAPTURE_DR_FROM_UPDATE_DR_GETDATA(buffer, this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi , this.jtag.tdo);
-
-            buffer_riscv = buffer[DMI_SIZE-1:0];
-
-            //while(buffer_riscv[1:0] == 2'b11) begin
-            //   //$display("buffer is set_dmi is %x (OP %x address %x datain %x) (%t)",buffer, buffer[1:0], buffer[8:2], buffer[DMI_SIZE-1:9], $realtime);
-            //   jtag_soc_dbg.jtag_goto_CAPTURE_DR_FROM_SHIFT_DR_GETDATA(buffer, s_tck, s_tms, s_trstn, s_tdi,s_tdo);
-            //   buffer_riscv = buffer[DMI_SIZE:1];
-            //end
-            //$display("dataout is set_dmi is %x (OP %x address %x datain %x) (%t)",buffer, buffer[1:0], buffer[40:34],  buffer[33:2], $realtime);
-
-            data_o[1:0]   = buffer_riscv[1:0];
-            data_o[40:34] = buffer_riscv[40:34];
-            data_o[33:2]  = buffer_riscv[33:2];
-            jtag_soc_dbg.idle(this.jtag.tck, this.jtag.tms, this.jtag.trstn, this.jtag.tdi);
-         end
-         
-
       endtask
 
       task dmi_reset();
@@ -1541,114 +1500,6 @@ package jtag_pkg;
          write_memory_abstract_cmd(addr_i, data_i, 3'd2);
 
       endtask
-
-
-      // task load_L2(
-      //    input int   num_stim,
-      //    ref   logic [95:0] stimuli [100000:0],
-      //    ref   logic s_tck,
-      //    ref   logic s_tms,
-      //    ref   logic s_trstn,
-      //    ref   logic s_tdi,
-      //    ref   logic s_tdo
-      // );
-
-      //    logic [1:0][31:0]   jtag_data;
-      //    logic [31:0]        jtag_addr;
-      //    logic [31:0]        spi_addr;
-      //    logic [31:0]        spi_addr_old;
-      //    logic               more_stim = 1;
-      //    logic [1:0]         dm_op;
-      //    logic [31:0]        dm_data;
-      //    logic [6:0]         dm_addr;
-
-      //    spi_addr        = stimuli[num_stim][95:64]; // assign address
-      //    jtag_data[0]    = stimuli[num_stim][63:0];  // assign data
-
-      //    this.set_sbreadonaddr(1'b0, s_tck, s_tms, s_trstn, s_tdi, s_tdo);
-      //    this.set_sbautoincrement(1'b0, s_tck, s_tms, s_trstn, s_tdi, s_tdo);
-
-      //    $display("[JTAG] Loading L2 with debug module jtag interface");
-
-      //    spi_addr_old = spi_addr - 32'h8;
-
-      //    while (more_stim) begin // loop until we have no more stimuli
-
-      //       jtag_addr = stimuli[num_stim][95:64];
-      //       for (int i=0;i<256;i=i+2) begin
-      //          spi_addr       = stimuli[num_stim][95:64]; // assign address
-      //          jtag_data[0]   = stimuli[num_stim][31:0];  // assign data
-      //          jtag_data[1]   = stimuli[num_stim][63:32]; // assign data
-
-      //          if (spi_addr != (spi_addr_old + 32'h8))
-      //             begin
-      //                spi_addr_old = spi_addr - 32'h8;
-      //                break;
-      //             end
-      //          else begin
-      //             num_stim = num_stim + 1;
-      //          end
-      //          if (num_stim > $size(stimuli) || stimuli[num_stim]===96'bx ) begin // make sure we have more stimuli
-      //             more_stim = 0;                    // if not set variable to 0, will prevent additional stimuli to be applied
-      //             break;
-      //          end
-      //          spi_addr_old = spi_addr;
-
-      //          this.set_dmi(
-      //             2'b10,           //write
-      //             7'h39,           //sbaddress0,
-      //             spi_addr[31:0], //bootaddress
-      //             {dm_addr, dm_data, dm_op},
-      //             s_tck,
-      //             s_tms,
-      //             s_trstn,
-      //             s_tdi,
-      //             s_tdo
-      //          );
-
-      //          this.set_dmi(
-      //             2'b10,           //write
-      //             7'h3C,           //sbdata0,
-      //             jtag_data[0],    //data
-      //             {dm_addr, dm_data, dm_op},
-      //             s_tck,
-      //             s_tms,
-      //             s_trstn,
-      //             s_tdi,
-      //             s_tdo
-      //          );
-      //          //$display("[JTAG] Loading L2 - Written %x at %x (%t)", jtag_data[0], spi_addr[31:0], $realtime);
-      //          this.set_dmi(
-      //             2'b10,             //write
-      //             7'h39,             //sbaddress0,
-      //             spi_addr[31:0]+4, //bootaddress
-      //             {dm_addr, dm_data, dm_op},
-      //             s_tck,
-      //             s_tms,
-      //             s_trstn,
-      //             s_tdi,
-      //             s_tdo
-      //          );
-
-      //          this.set_dmi(
-      //             2'b10,           //write
-      //             7'h3C,           //sbdata0,
-      //             jtag_data[1],    //data
-      //             {dm_addr, dm_data, dm_op},
-      //             s_tck,
-      //             s_tms,
-      //             s_trstn,
-      //             s_tdi,
-      //             s_tdo
-      //          );
-      //       end
-      //       $display("[JTAG] Loading L2 - Written up to %x (%t)", spi_addr[31:0]+4, $realtime);
-
-      //    end
-      //    this.set_sbreadonaddr(1'b1, s_tck, s_tms, s_trstn, s_tdi, s_tdo);
-      //    this.set_sbautoincrement(1'b0, s_tck, s_tms, s_trstn, s_tdi, s_tdo);
-
-      // endtask
 
       // discover harts by writting all ones to hartsel and reading it back
       task test_discover_harts(
