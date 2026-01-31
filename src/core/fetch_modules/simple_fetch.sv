@@ -2,7 +2,7 @@
 // assumes a memory with synchronous reading
 
 module simple_fetch
-import riscv_pkg::*;
+import core_pkg::*;
 import csr_pkg::*;
 #(parameter bit [31:0] BOOT_PC = 'h8000_0000)
 (

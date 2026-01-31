@@ -1,7 +1,7 @@
 // dependancy and hazard detection unit
 
 module controller
-import riscv_pkg::*;
+import core_pkg::*;
 import csr_pkg::*;
 (
     input clk_i,

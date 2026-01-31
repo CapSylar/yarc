@@ -2,7 +2,7 @@
 // https://github.com/riscv-software-src/riscv-tests
 
 module riscv_tests
-import riscv_pkg::*;
+import core_pkg::*;
 #(parameter string MEMFILE = "", parameter int MAX_TICKS = 1000000)
 ();
 

@@ -2,7 +2,7 @@
 // contains a fifo separating the fetching process from the processor interface
 
 module wb_prefetch
-import riscv_pkg::*;
+import core_pkg::*;
 import csr_pkg::*;
 #(parameter bit [31:0] BOOT_PC = 'h8000_0000,
   parameter unsigned INSTR_BUFFER_SIZE_POT = 3) // POT = power of two

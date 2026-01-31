@@ -1,5 +1,5 @@
 
-package riscv_pkg;
+package core_pkg;
 
 typedef enum logic [6:0]
 {
@@ -148,4 +148,4 @@ typedef enum logic [1:0]
     ATOMIC_AMO= 2'b10
 } atomic_op_e;
 
-endpackage: riscv_pkg
+endpackage: core_pkg

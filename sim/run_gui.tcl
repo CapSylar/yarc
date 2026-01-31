@@ -2,7 +2,7 @@
 global env
 set TOP sim:$env(SIM_TOP)
 set PLATFORM ${TOP}/yarc_platform_i
-set CORE ${PLATFORM}/core_i
+set CORE ${PLATFORM}/subsystem_i/core_i
 
 add wave ${CORE}/clk_i;
 add wave ${CORE}/rstn_i;
@@ -53,7 +53,6 @@ add wave -group {ALL CSRS} ${CS_REGISTERS_PATH}/*;
 
 # ---------------------------------------------------------
 add wave -divider {DECODE}
-add wave ${CORE}/decode_i/current_plvl_i;
 add wave ${CORE}/decode_i/instr_i;
 add wave ${CORE}/decode_i/stall_i;
 add wave ${CORE}/decode_i/flush_i;

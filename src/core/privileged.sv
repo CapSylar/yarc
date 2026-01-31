@@ -1,7 +1,7 @@
 `default_nettype none
 
 module privileged
-import riscv_pkg::*;
+import core_pkg::*;
 import csr_pkg::*;
 (
     input wire clk_i,

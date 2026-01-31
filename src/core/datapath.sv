@@ -1,7 +1,7 @@
 `default_nettype none
 
 module datapath
-import riscv_pkg::*;
+import core_pkg::*;
 (
     input wire clk_i,
     input wire rstn_i,

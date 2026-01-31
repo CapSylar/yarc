@@ -11,7 +11,7 @@
 */
 
 module core_top
-import riscv_pkg::*;
+import core_pkg::*;
 import csr_pkg::*;
 (
     input clk_i,

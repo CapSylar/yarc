@@ -88,7 +88,7 @@ endif
 VIVODO_LIBS_COMMAND := 
 
 questa:
-	qrun -64 +acc -modelsimini modelsim.ini -f files.tcl -sv -sv12compat $(TIMESCALE) -outdir questa_work -top $(TOPMOD) $(TOP_PARAMS) -do $(DO_FILE) $(VIVADO_COMPILE_COMMAND)
+	qrun -64 +acc -suppress 13314 -modelsimini modelsim.ini -f files.tcl -sv -sv12compat $(TIMESCALE) -outdir questa_work -top $(TOPMOD) $(TOP_PARAMS) -do $(DO_FILE) $(VIVADO_COMPILE_COMMAND)
 
 questa_clean:
 	qrun -clean

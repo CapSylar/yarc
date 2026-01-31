@@ -2,12 +2,17 @@
 +incdir+${PRJ_DIR}/core/
 +incdir+${PRJ_DIR}/core/includes/
 +incdir+${PRJ_DIR}/ddr3_mem_controller/includes/
++incdir+${PRJ_DIR}/src/utils/common_cells/
 
 // packages
-${PRJ_DIR}/core/includes/riscv_pkg.sv
+${PRJ_DIR}/core/includes/core_pkg.sv
 ${PRJ_DIR}/core/includes/csr_pkg.sv
 ${PRJ_DIR}/ddr3_mem_controller/ddr3_parameters_pkg.sv
 ${PRJ_DIR}/platform/includes/platform_pkg.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_pkg.sv
+${PRJ_DIR}/jtag-dbg/riscv_pkg.sv
+${PRJ_DIR}/jtag-dbg/jtag_pkg.sv
+${PRJ_DIR}/utils/cdc_reset_ctrlr_pkg.sv
 
 // generics
 ${PRJ_DIR}/generic/flop/flopenrc.sv
@@ -56,6 +61,12 @@ ${PRJ_DIR}/utils/reg_bw.sv
 ${PRJ_DIR}/utils/afifo.v
 ${PRJ_DIR}/utils/async_fifo.sv
 ${PRJ_DIR}/utils/skid_buffer.sv
+${PRJ_DIR}/utils/cdc_2phase_clearable.sv
+${PRJ_DIR}/utils/fifo_v3.sv
+${PRJ_DIR}/utils/fifo_v2.sv
+${PRJ_DIR}/utils/sync.sv
+${PRJ_DIR}/utils/cdc_reset_ctrlr.sv
+${PRJ_DIR}/utils/cdc_4phase.sv
 
 // testbench utils
 ${PRJ_DIR}/utils/simulation/clk_gen.sv
@@ -99,6 +110,7 @@ ${PRJ_DIR}/platform/periph_xbar.sv
 ${PRJ_DIR}/platform/fetch_intercon.sv
 ${PRJ_DIR}/platform/data_intercon.sv
 ${PRJ_DIR}/platform/yarc_platform.sv
+${PRJ_DIR}/platform/core_subsystem.sv
 
 // memories
 ${PRJ_DIR}/memories/dp_mem_wb.sv
@@ -121,6 +133,22 @@ ${PRJ_DIR}/ddr3_mem_controller/ddr3_top.v
 ${PRJ_DIR}/ddr3_mem_controller/yarc_ddr3_top.sv
 ${PRJ_DIR}/ddr3_mem_controller/sim_files/ddr3_sim_model.sv
 ${PRJ_DIR}/ddr3_mem_controller/sim_files/wb_sim_memory.sv
+
+// jtag files
+${PRJ_DIR}/jtag-dbg/jtag_interface.svh
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_csrs.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_mem.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_obi_top.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_sba.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dm_top.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_bscane_tap.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_cdc.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_intf.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_jtag.sv
+${PRJ_DIR}/jtag-dbg/riscv-dbg/debug_rom/debug_rom.sv
+# ${PRJ_DIR}/jtag-dbg/riscv-dbg/src/dmi_jtag_tap.sv
+
+${PRJ_DIR}/jtag-dbg/jtag_sim.sv
 
 // testbenches
 ${PRJ_DIR}/utils/rxuartlite.v

@@ -1,7 +1,7 @@
 // branch unit
 
 module branch_unit
-import riscv_pkg::*;
+import core_pkg::*;
 (
     input wire [31:0] rs1ValueE_i,
     input wire [31:0] rs2ValueE_i,

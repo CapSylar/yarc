@@ -1,7 +1,7 @@
 // write_back module
 
 module write_back
-import riscv_pkg::*;
+import core_pkg::*;
 (
     input clk_i,
     input rstn_i,

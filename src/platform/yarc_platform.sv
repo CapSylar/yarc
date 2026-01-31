@@ -40,7 +40,14 @@ import platform_pkg::*;
     input pixel_clk_5x_i,
 
     // hdmi lines
-	output logic [3:0] hdmi_channel_o
+	output logic [3:0] hdmi_channel_o,
+
+    // JTAG lines
+    input wire tck_i,
+    input wire tms_i,
+    input wire trst_ni,
+    input wire td_i,
+    output logic td_o
 );
 
 wishbone_if #(.ADDRESS_WIDTH(MAIN_WB_AW), .DATA_WIDTH(MAIN_WB_DW)) instr_fetch_wb_if();
@@ -241,7 +248,7 @@ sec_xbar sec_xbar_i
 wb_connect fb_connect (.wb_if_i(sec_xbar_slaves_if[SEC_XBAR_FB_SLAVE_IDX]), .wb_if_o(fb_wb_if));
 
 // Core Top
-core_top core_i
+core_subsystem subsystem_i
 (
     .clk_i(clk_i),
     .rstn_i(rstn_i),
@@ -257,7 +264,13 @@ core_top core_i
     .m_external_interrupt_i(uart_int),
 
     .flush_icache_req_o(flush_icache_req),
-    .flush_icache_ack_i(flush_icache_ack)
+    .flush_icache_ack_i(flush_icache_ack),
+
+    .tck_i(tck_i),
+    .tms_i(tms_i),
+    .trst_ni(trst_ni),
+    .td_i(td_i),
+    .td_o(td_o)
 );
 
 endmodule: yarc_platform

@@ -217,6 +217,14 @@ generate
     end
 endgenerate
 
+// JTAG lines
+
+logic tck;
+logic tms;
+logic trst_n;
+logic tdi;
+logic tdo;
+
 yarc_platform yarc_platform_i
 (
     .clk_i(clk),
@@ -243,7 +251,22 @@ yarc_platform yarc_platform_i
     .pixel_clk_i(pixel_clk),
     .pixel_rstn_i(rstn),
     .pixel_clk_5x_i(pixel_clk_5x),
-    .hdmi_channel_o()
+    .hdmi_channel_o(),
+
+    // JTAG lines
+    .tck_i      (tck),
+    .tms_i      (tms),
+    .trst_ni    (trst_n),
+    .td_i       (tdi),
+    .td_o       (tdo)
+);
+
+jtag_sim jtag_sim_i(
+    .tck_o(tck),
+    .tms_o(tms),
+    .trst_no(trst_n),
+    .tdi_o(tdi),
+    .tdo_i(tdo)
 );
 
 endmodule: core_with_mem

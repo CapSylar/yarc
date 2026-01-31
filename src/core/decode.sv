@@ -2,7 +2,7 @@
 // takes instructions in, splits them into control signals
 
 module decode
-import riscv_pkg::*;
+import core_pkg::*;
 import csr_pkg::*;
 (
     input clk_i,
