@@ -1,3 +1,6 @@
 [submodule "sim/riscv-tests"]
 	path = sim/riscv-tests
 	url = https://github.com/riscv-software-src/riscv-tests.git
+[submodule "src/riscv-dbg"]
+	path = src/jtag-dbg/riscv-dbg
+	url = https://github.com/pulp-platform/riscv-dbg
